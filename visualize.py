@@ -78,7 +78,6 @@ def get_color(m, highlight):
         return (0xF - m * 0x1) * base
 
 def render_image(screen, s, matrix, p, result, scale):
-    screen.fill(0x000000)
     font = pygame.font.SysFont(None, 12)
     used = [ False ] * (s ** 2)
     def callback(y, x):
@@ -88,24 +87,15 @@ def render_image(screen, s, matrix, p, result, scale):
         used[y * s + x] = True
         return True
     flood_fill(s, s, result['y'], result['x'], callback)
+    screen.fill(0x000000)
     for y in range(s):
         for x in range(s):
-            if not used[y * s + x]:
-                color = get_color(matrix[p[y] * s + p[x]], False)
-                rect = pygame.Rect( x * scale, y * scale, scale, scale )
-                pygame.draw.rect(screen, color, rect)
-    for y in range(s):
-        for x in range(s):
-            if used[y * s + x]:
-                width = 2
-                rect = pygame.Rect( x * scale - width, y * scale - width, scale + 2 * width, scale + 2 * width )
-                pygame.draw.rect(screen, 0x000000, rect)  # draw the border
-    for y in range(s):
-        for x in range(s):
-            if used[y * s + x]:
-                color = get_color(matrix[p[y] * s + p[x]], True)
-                rect = pygame.Rect( x * scale, y * scale, scale, scale )
-                pygame.draw.rect(screen, color, rect)
+            width = 1
+            rect = pygame.Rect( x * scale, y * scale, scale, scale )
+            pygame.draw.rect(screen, [0xd3d3d3, 0x000000][used[y * s + x]], rect)  # draw the border
+            color = get_color(matrix[p[y] * s + p[x]], used[y * s + x])
+            rect = pygame.Rect( x * scale + width, y * scale + width, scale - 2 * width, scale - 2 * width )
+            pygame.draw.rect(screen, color, rect)
 
 def update_screen(screen, s, matrix, ps, ix, scale):
     result = calculate_score(s, matrix, ps[ix])
