@@ -63,18 +63,28 @@ int calculate_score(vector<int> const & p, vector<int> const & matrix) {
 default_random_engine gen;
 vector<int> ConnectedComponent::permute(vector<int> matrix) {
     int s = (int)sqrt(matrix.size());
-    vector<int> result;
-    int best_score = -1;
     vector<int> p(s);
     iota(whole(p), 0);
+    int current_score = calculate_score(p, matrix);
+    vector<int> result = p;
+    int best_score = current_score;
     for (double clock_begin = rdtsc(); rdtsc() - clock_begin < 9.5; ) {
         repeat (iteration, 100) {
-            shuffle(whole(p), gen);
-            int score = calculate_score(p, matrix);
-            if (best_score < score) {
-                best_score = score;
-                result = p;
-    cerr << "score updated: " << best_score << endl;
+            int x = -1, y = -1;
+            while (x == y) {
+                x = uniform_int_distribution<int>(0, s - 1)(gen);
+                y = uniform_int_distribution<int>(0, s - 1)(gen);
+            }
+            swap(p[x], p[y]);
+            int next_score = calculate_score(p, matrix);
+            if (current_score <= next_score) {
+                current_score = next_score;
+                if (best_score < current_score) {
+                    best_score = current_score;
+                    result = p;
+                }
+            } else {
+                swap(p[x], p[y]);
             }
         }
     }
