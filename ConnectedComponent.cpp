@@ -60,6 +60,12 @@ int calculate_score(vector<int> const & p, vector<int> const & matrix) {
     return result;
 }
 
+void visualize(vector<int> const & p) {
+    cerr << "VISUALIZE: " << p.size();
+    for (int p_i : p) cerr << ' ' << p_i;
+    cerr << endl;
+}
+
 default_random_engine gen;
 vector<int> ConnectedComponent::permute(vector<int> matrix) {
     int s = (int)sqrt(matrix.size());
@@ -88,7 +94,8 @@ vector<int> ConnectedComponent::permute(vector<int> matrix) {
                 if (best_score < current_score) {
                     best_score = current_score;
                     result = p;
-    cerr << "score updated: " << best_score << endl;
+cerr << "score updated: " << best_score << endl;
+visualize(p);
                 }
             } else {
                 swap(p[x], p[y]);
