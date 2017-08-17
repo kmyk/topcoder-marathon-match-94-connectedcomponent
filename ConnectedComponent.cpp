@@ -74,7 +74,7 @@ vector<int> ConnectedComponent::permute(vector<int> matrix) {
             break;
         }
         double temp = (clock_end - clock_begin) * 10;
-        repeat (iteration, 100) {
+        repeat (iteration, 10) {
             int x = -1, y = -1;
             while (x == y) {
                 x = uniform_int_distribution<int>(0, s - 1)(gen);
