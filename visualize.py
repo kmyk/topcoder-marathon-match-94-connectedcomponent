@@ -21,7 +21,7 @@ def read_ps(fh):
             line = line.split()
             p = list(map(int, line[2 : ]))
             assert len(p) == int(line[1])
-            yield { 'p': p }
+            yield p
 
 def flood_fill(h, w, y, x, callback):
     dy = [ -1, 1, 0, 0 ]
@@ -48,16 +48,14 @@ def calculate_score(s, matrix, p):
             if not used[y * s + x]:
                 size = 0
                 acc = 0
-                component = [ False ] * (s ** 2)
                 def callback(y, x):
-                    nonlocal used, size, acc, component
+                    nonlocal used, size, acc
                     value = matrix[p[y] * s + p[x]]
                     if value == 0:
                         return False
                     used[y * s + x] = True
                     size += 1
                     acc += value
-                    component[y * s + x] = True
                     return True
                 flood_fill(s, s, y, x, callback)
                 score = int(acc * math.sqrt(size))
@@ -65,7 +63,6 @@ def calculate_score(s, matrix, p):
                     result['score'] = score
                     result['size'] = size
                     result['sum'] = acc
-                    result['used'] = component
                     result['y'] = y
                     result['x'] = x
     return result
@@ -80,24 +77,30 @@ def get_color(m, highlight):
         base = [0x111111, 0x110000][bool(highlight)]
         return (0xF - m * 0x1) * base
 
-def render_image(screen, s, matrix, p, scale):
+def render_image(screen, s, matrix, p, result, scale):
     font = pygame.font.SysFont(None, 12)
+    used = [ False ] * (s ** 2)
+    def callback(y, x):
+        nonlocal used
+        if matrix[p[y] * s + p[x]] == 0:
+            return False
+        used[y * s + x] = True
+        return True
+    flood_fill(s, s, result['y'], result['x'], callback)
     screen.fill(0x000000)
     for y in range(s):
         for x in range(s):
             width = 1
             rect = pygame.Rect( x * scale, y * scale, scale, scale )
-            pygame.draw.rect(screen, [0xd3d3d3, 0x000000][p['used'][y * s + x]], rect)  # draw the border
-            color = get_color(matrix[p['p'][y] * s + p['p'][x]], p['used'][y * s + x])
+            pygame.draw.rect(screen, [0xd3d3d3, 0x000000][used[y * s + x]], rect)  # draw the border
+            color = get_color(matrix[p[y] * s + p[x]], used[y * s + x])
             rect = pygame.Rect( x * scale + width, y * scale + width, scale - 2 * width, scale - 2 * width )
             pygame.draw.rect(screen, color, rect)
 
 def update_screen(screen, s, matrix, ps, ix, scale):
-    p = ps[ix]
-    if 'score' not in p:
-        p.update(calculate_score(s, matrix, p['p']))
-    render_image(screen, s, matrix, p, scale)
-    pygame.display.set_caption('visualize %d / %d: score = %d' % (ix + 1, len(ps), p['score']))
+    result = calculate_score(s, matrix, ps[ix])
+    render_image(screen, s, matrix, ps[ix], result, scale)
+    pygame.display.set_caption('visualize %d / %d: score = %d' % (ix + 1, len(ps), result['score']))
     pygame.display.update()
 
 def visualize(s, matrix, ps):
@@ -118,10 +121,6 @@ def visualize(s, matrix, ps):
                 elif event.key == pygame.K_LEFT:
                     ix = (ix - 1) % len(ps)
                     update_screen(screen, s, matrix, ps, ix, scale)
-                if event.key == pygame.K_a:
-                    for p in ps:
-                        if 'score' not in p:
-                            p.update(calculate_score(s, matrix, p['p']))
         time.sleep(1 / 60)
     pygame.quit()
 
