@@ -68,7 +68,12 @@ vector<int> ConnectedComponent::permute(vector<int> matrix) {
     int current_score = calculate_score(p, matrix);
     vector<int> result = p;
     int best_score = current_score;
-    for (double clock_begin = rdtsc(); rdtsc() - clock_begin < 9.5; ) {
+    for (double clock_begin = rdtsc(); ; ) {
+        double clock_end = rdtsc();
+        if (clock_end - clock_begin > 9.5) {
+            break;
+        }
+        double temp = (clock_end - clock_begin) * 10;
         repeat (iteration, 100) {
             int x = -1, y = -1;
             while (x == y) {
@@ -77,11 +82,13 @@ vector<int> ConnectedComponent::permute(vector<int> matrix) {
             }
             swap(p[x], p[y]);
             int next_score = calculate_score(p, matrix);
-            if (current_score <= next_score) {
+            int delta = next_score - current_score;
+            if (current_score <= next_score or bernoulli_distribution(exp(delta / temp))(gen)) {
                 current_score = next_score;
                 if (best_score < current_score) {
                     best_score = current_score;
                     result = p;
+    cerr << "score updated: " << best_score << endl;
                 }
             } else {
                 swap(p[x], p[y]);
