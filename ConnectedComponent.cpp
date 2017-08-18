@@ -190,12 +190,12 @@ cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << en
 #endif
                 break;
             }
-            temp = max(0.0, 10 - (clock_end - clock_begin)) / 10 * s * 10;
+            temp = max(0.0, 10 - (clock_end - clock_begin)) / 10 * s;
         }
-        int x = uniform_int_distribution<int>(0, s - 1)(gen);
-        int y = x < s / 2 ?
-            uniform_int_distribution<int>(max(s / 2, (s - 1) - x - 3), s - 1)(gen) :
-            uniform_int_distribution<int>(0, min(s / 2 - 1, (s - 1) - x + 3))(gen);
+        int x = bernoulli_distribution(0.5)(gen) ?
+            uniform_int_distribution<int>(max(0, current.ly - 1), min(s, current.ry + 1) - 1)(gen) :
+            uniform_int_distribution<int>(max(0, current.lx - 1), min(s, current.rx + 1) - 1)(gen);
+        int y = uniform_int_distribution<int>(0, s - 1)(gen);
         swap(p[x], p[y]);
         auto next = analyze_permutation(p, matrix,
                 max(0, current.ly - 5),
