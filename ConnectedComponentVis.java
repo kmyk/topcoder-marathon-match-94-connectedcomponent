@@ -149,7 +149,8 @@ public class ConnectedComponentVis {
 
         // find connected components and calculate score
         int[][] component = new int[S][S];
-        int nComp = 0, maxSum = - S * S * 10;
+        int nComp = 0;
+        double maxSum = - S * S * 10.0 * S;
         for (int i = 0; i < S; ++i)
         for (int j = 0; j < S; ++j) {
             if (permuted[i][j] == 0)
@@ -157,7 +158,8 @@ public class ConnectedComponentVis {
             if (component[i][j] > 0)
                 continue;
             int[] r = new int[S*S], c = new int[S*S];
-            int size = 0, sum = 0;
+            int size = 0;
+            double sum = 0;
             nComp++;
             component[i][j] = nComp;
             r[size] = i;
