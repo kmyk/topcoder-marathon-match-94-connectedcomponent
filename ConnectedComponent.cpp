@@ -192,11 +192,25 @@ cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << en
             }
             temp = max(0.0, 10 - (clock_end - clock_begin)) / 10 * s;
         }
-        int x = bernoulli_distribution(0.5)(gen) ?
-            uniform_int_distribution<int>(max(0, current.ly - 1), min(s, current.ry + 1) - 1)(gen) :
-            uniform_int_distribution<int>(max(0, current.lx - 1), min(s, current.rx + 1) - 1)(gen);
-        int y = uniform_int_distribution<int>(0, s - 1)(gen);
-        swap(p[x], p[y]);
+        int neightborhood_type = uniform_int_distribution<int>(0, 9)(gen);
+        int x = -1, y = -1;
+        while (x == y) {
+            x = bernoulli_distribution(0.5)(gen) ?
+                uniform_int_distribution<int>(max(0, current.ly - 1), min(s, current.ry + 1) - 1)(gen) :
+                uniform_int_distribution<int>(max(0, current.lx - 1), min(s, current.rx + 1) - 1)(gen);
+            y = uniform_int_distribution<int>(0, s - 1)(gen);
+        }
+        if (neightborhood_type <= 3) {
+            swap(p[x], p[y]);
+        } else if (neightborhood_type <= 7) {
+            if (x < y) {
+                rotate(p.begin() + x, p.begin() + (x + 1), p.begin() + (y + 1));
+            } else {
+                rotate(p.begin() + y, p.begin() + x, p.begin() + (x + 1));
+            }
+        } else {
+            reverse(p.begin() + min(x, y), p.begin() + (max(x, y) + 1));
+        }
         auto next = analyze_permutation(p, matrix,
                 max(0, current.ly - 5),
                 max(0, current.lx - 5),
@@ -217,7 +231,17 @@ cerr << "MESSAGE: score     = " << int(best_score) << endl;
 #endif
             }
         } else {
-            swap(p[x], p[y]);
+            if (neightborhood_type <= 3) {
+                swap(p[x], p[y]);
+            } else if (neightborhood_type <= 7) {
+                if (x < y) {
+                    rotate(p.begin() + x, p.begin() + y, p.begin() + (y + 1));
+                } else {
+                    rotate(p.begin() + y, p.begin() + (y + 1), p.begin() + (x + 1));
+                }
+            } else {
+                reverse(p.begin() + min(x, y), p.begin() + (max(x, y) + 1));
+            }
         }
     }
 #ifdef VISUALIZE
