@@ -5,6 +5,7 @@ import subprocess
 import sys
 import pygame
 import time
+import copy
 
 def read_matrix(path):
     with open(path) as fh:
@@ -93,16 +94,32 @@ def render_image(screen, s, matrix, p, scale):
     for y in range(s):
         for x in range(s):
             width = 1
+            color = 0xd3d3d3
+            if y == x:
+                color = 0x333333
+            if p['used'][y * s + x]:
+                color = 0x000000
+            if 'selected' in p and p['selected'] in ( y, x ):
+                color = 0xff0000
             rect = pygame.Rect( x * scale, y * scale, scale, scale )
-            pygame.draw.rect(screen, [0xd3d3d3, 0x000000][p['used'][y * s + x]], rect)  # draw the border
+            pygame.draw.rect(screen, color, rect)  # draw the border
             color = get_color(matrix[p['p'][y] * s + p['p'][x]], p['used'][y * s + x])
             rect = pygame.Rect( x * scale + width, y * scale + width, scale - 2 * width, scale - 2 * width )
             pygame.draw.rect(screen, color, rect)
 
-def update_screen(screen, s, matrix, ps, ix, scale):
-    p = ps[ix]
-    if 'score' not in p:
+def update_screen(screen, s, matrix, ps, ix, scale, swaps):
+    if not swaps:
+        p = ps[ix]
+        if 'score' not in p:
+            p.update(calculate_score(s, matrix, p['p']))
+    else:
+        p = copy.deepcopy(ps[ix])
+        for r in range(2, len(swaps) + 1, 2):
+            x, y = swaps[r - 2 : r]
+            p['p'][x], p['p'][y] = p['p'][y], p['p'][x]
         p.update(calculate_score(s, matrix, p['p']))
+        if len(swaps) % 2 == 1:
+            p['selected'] = swaps[-1]
     render_image(screen, s, matrix, p, scale)
     caption = 'visualize %d of %d / score = %d' % (ix + 1, len(ps), p['score'])
     if 'message' in p:
@@ -113,9 +130,10 @@ def update_screen(screen, s, matrix, ps, ix, scale):
 def visualize(s, matrix, ps):
     scale = 1024 // s
     ix = len(ps) - 1
+    swaps = []
     pygame.init()
     screen = pygame.display.set_mode((s * scale, s * scale))
-    update_screen(screen, s, matrix, ps, ix, scale)
+    update_screen(screen, s, matrix, ps, ix, scale, swaps)
     quit = False
     while not quit:
         for event in pygame.event.get():
@@ -124,14 +142,33 @@ def visualize(s, matrix, ps):
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RIGHT:
                     ix = (ix + 1) % len(ps)
-                    update_screen(screen, s, matrix, ps, ix, scale)
+                    swaps = []
+                    update_screen(screen, s, matrix, ps, ix, scale, swaps)
                 elif event.key == pygame.K_LEFT:
                     ix = (ix - 1) % len(ps)
-                    update_screen(screen, s, matrix, ps, ix, scale)
-                if event.key == pygame.K_a:
+                    swaps = []
+                    update_screen(screen, s, matrix, ps, ix, scale, swaps)
+                elif event.key == pygame.K_a:
                     for p in ps:
                         if 'score' not in p:
                             p.update(calculate_score(s, matrix, p['p']))
+                elif event.key == pygame.K_SPACE:
+                    swaps = []
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1: # left
+                    x, y = pygame.mouse.get_pos()
+                    y //= scale
+                    x //= scale
+                    z = [ min(y, x), max(y, x) ][ y + x < s ]
+                    if len(swaps) % 2 == 1 and swaps[-1] == z:
+                        swaps.pop()
+                    else:
+                        swaps += [ z ]
+                    update_screen(screen, s, matrix, ps, ix, scale, swaps)
+                elif event.button == 3: # right
+                    if len(swaps) % 2 == 1:
+                        swaps.pop()
+                        update_screen(screen, s, matrix, ps, ix, scale, swaps)
         time.sleep(1 / 60)
     pygame.quit()
 
