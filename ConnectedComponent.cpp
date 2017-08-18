@@ -69,6 +69,24 @@ void visualize(vector<int> const & p) {
     cerr << endl;
 }
 
+double estimate_base_score(int s, vector<char> const & matrix) {
+    vector<int> p(s);
+    iota(whole(p), 0);
+    deque<double> scores;
+    repeat (i, 16) {
+        shuffle(whole(p), gen);
+        scores.push_back(calculate_score(p, matrix));
+    }
+    sort(whole(scores));
+    scores.pop_front();
+    scores.pop_front();
+    scores.pop_front();
+    scores.pop_back();
+    scores.pop_back();
+    scores.pop_back();
+    return accumulate(whole(scores), 0.0) / 10;
+}
+
 vector<int> ConnectedComponent::permute(vector<int> int_matrix) {
     double clock_begin = rdtsc();
     vector<char> matrix(whole(int_matrix));
@@ -86,9 +104,10 @@ cerr << "MESSAGE: s = " << s << endl;
             double clock_end = rdtsc();
             if (clock_end - clock_begin > 9.5) {
 cerr << "MESSAGE: iteration = " << iteration << endl;
+cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << endl;
                 break;
             }
-            temp = (clock_end - clock_begin) * 10;
+            temp = max(0.0, 10 - (clock_end - clock_begin)) / 10 * s * 10;
         }
         int x = -1, y = -1;
         while (x == y) {
