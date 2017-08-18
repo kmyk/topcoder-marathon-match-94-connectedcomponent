@@ -11,7 +11,7 @@ build:
 	${CXX} ${CXXFLAGS} -g -DLOCAL ${PROBLEM}.cpp
 visualize: build
 	[ -e test/${SEED}.in ] || ./generate.py ${SEED} | sponge test/${SEED}.in
-	./a.out < test/${SEED}.in 2>&1 >/dev/null | ./visualize.py test/${SEED}.in
+	./a.out < test/${SEED}.in 2>&1 >/dev/null | tee /dev/stderr | ./visualize.py test/${SEED}.in
 test: build
 	java -jar tester.jar -exec ./a.out -seed ${SEED} -vis
 score: build
