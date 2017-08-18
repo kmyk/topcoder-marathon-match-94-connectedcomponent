@@ -64,55 +64,8 @@ double calculate_score(vector<int> const & p, vector<char> const & matrix) {
 }
 
 pair<double, double> calculate_evaluated_value(vector<int> const & p, vector<char> const & matrix) {
-    int s = p.size();
-    auto at = [&](int y, int x) { return matrix[p[y] * s + p[x]]; };
-    auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
-    vector<char> used(s * s);
-    int size = 0, acc = 0;
-    function<void (int, int)> go = [&](int y, int x) {
-        used[y * s + x] = true;
-        size += 1;
-        acc += at(y, x);
-        repeat (i, 4) {
-            int ny = y + dy[i];
-            int nx = x + dx[i];
-            if (is_on_field(ny, nx) and not used[ny * s + nx] and at(ny, nx)) {
-                go(ny, nx);
-            }
-        }
-    };
-/*
-    double evaluated = 0;
-    double score = 0;
-    repeat (y, s) repeat (x, s) {
-        if (not used[y * s + x] and at(y, x)) {
-            size = acc = 0;
-            go(y, x);
-            if (score < acc * sqrt(size)) {
-                score = acc * sqrt(size);
-                evaluated = acc * pow(size, 0.3);
-            }
-        }
-    }
-*/
-    priority_queue<double> que;
-    repeat (y, s) repeat (x, s) {
-        if (not used[y * s + x] and at(y, x)) {
-            size = acc = 0;
-            go(y, x);
-            que.push(- acc * sqrt(size));
-            if (que.size() > 6) que.pop();
-        }
-    }
-    double evaluated = 0;
-    double score = 0;
-    while (not que.empty()) {
-        score = - que.top();
-        que.pop();
-        evaluated *= 0.3;
-        evaluated += score;
-    }
-    return { evaluated, score };
+    double score = calculate_score(p, matrix);
+    return { score, score };
 }
 
 void visualize(vector<int> const & p) {
@@ -140,15 +93,32 @@ double estimate_base_score(int s, vector<char> const & matrix) {
 }
 
 vector<int> ConnectedComponent::permute(vector<int> int_matrix) {
+    // prepare
     double clock_begin = rdtsc();
     vector<char> matrix(whole(int_matrix));
     int s = int(sqrt(matrix.size()));
+    // initialize
     vector<int> p(s);
     iota(whole(p), 0);
 // visualize(p);
 cerr << "MESSAGE: s = " << s << endl;
     double best_score, current_evaluated; tie(current_evaluated, best_score) = calculate_evaluated_value(p, matrix);
     vector<int> result = p;
+    repeat (iteration, 100) {
+        shuffle(whole(p), gen);
+        double next_evaluated, next_score; tie(next_evaluated, next_score) = calculate_evaluated_value(p, matrix);
+        if (current_evaluated < next_evaluated) {
+            current_evaluated = next_evaluated;
+            best_score = next_score;
+            result = p;
+// visualize(p);
+// cerr << "MESSAGE: first iteration = " << iteration << endl;
+// cerr << "MESSAGE: evaluated = " << int(current_evaluated) << endl;
+// cerr << "MESSAGE: score     = " << int(best_score) << endl;
+        }
+    }
+    p = result;
+    // simulated annealing
     double temp = INFINITY;
     for (int iteration = 0; ; ++ iteration) {
         if (iteration % 10 == 0) {
@@ -160,11 +130,8 @@ cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << en
             }
             temp = max(0.0, 10 - (clock_end - clock_begin)) / 10 * s * 10;
         }
-        int x = -1, y = -1;
-        while (x == y) {
-            x = uniform_int_distribution<int>(0, s - 1)(gen);
-            y = uniform_int_distribution<int>(0, s - 1)(gen);
-        }
+        int x = uniform_int_distribution<int>(0, s - 1)(gen);
+        int y = bernoulli_distribution(0.4)(gen) ? (x + uniform_int_distribution<int>(1, 4)(gen)) % s : uniform_int_distribution<int>(0, s - 1)(gen);
         swap(p[x], p[y]);
         double next_evaluated, next_score; tie(next_evaluated, next_score) = calculate_evaluated_value(p, matrix);
         double delta = next_evaluated - current_evaluated;
