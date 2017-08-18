@@ -29,9 +29,12 @@ double rdtsc() { // in seconds
     return ((uint64_t)hi << 32 | lo) / ticks_per_sec;
 }
 
+constexpr double eps = 1e-6;
+default_random_engine gen;
+
 class ConnectedComponent { public: vector<int> permute(vector<int> matrix); };
 
-int calculate_score(vector<int> const & p, vector<int> const & matrix) {
+double calculate_score(vector<int> const & p, vector<char> const & matrix) {
     int s = p.size();
     auto at = [&](int y, int x) { return matrix[p[y] * s + p[x]]; };
     auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
@@ -49,12 +52,12 @@ int calculate_score(vector<int> const & p, vector<int> const & matrix) {
             }
         }
     };
-    int result = 0;
+    double result = 0;
     repeat (y, s) repeat (x, s) {
         if (not used[y * s + x] and at(y, x)) {
             size = acc = 0;
             go(y, x);
-            setmax(result, int(acc * sqrt(size)));
+            setmax(result, acc * sqrt(size));
         }
     }
     return result;
@@ -66,40 +69,45 @@ void visualize(vector<int> const & p) {
     cerr << endl;
 }
 
-default_random_engine gen;
-vector<int> ConnectedComponent::permute(vector<int> matrix) {
-    int s = (int)sqrt(matrix.size());
+vector<int> ConnectedComponent::permute(vector<int> int_matrix) {
+    double clock_begin = rdtsc();
+    vector<char> matrix(whole(int_matrix));
+    int s = int(sqrt(matrix.size()));
     vector<int> p(s);
     iota(whole(p), 0);
-    int current_score = calculate_score(p, matrix);
+// visualize(p);
+cerr << "MESSAGE: s = " << s << endl;
+    double current_score = calculate_score(p, matrix);
     vector<int> result = p;
-    int best_score = current_score;
-    for (double clock_begin = rdtsc(); ; ) {
-        double clock_end = rdtsc();
-        if (clock_end - clock_begin > 9.5) {
-            break;
+    double best_score = current_score;
+    double temp = INFINITY;
+    for (int iteration = 0; ; ++ iteration) {
+        if (iteration % 10 == 0) {
+            double clock_end = rdtsc();
+            if (clock_end - clock_begin > 9.5) {
+cerr << "MESSAGE: iteration = " << iteration << endl;
+                break;
+            }
+            temp = (clock_end - clock_begin) * 10;
         }
-        double temp = (clock_end - clock_begin) * 10;
-        repeat (iteration, 10) {
-            int x = -1, y = -1;
-            while (x == y) {
-                x = uniform_int_distribution<int>(0, s - 1)(gen);
-                y = uniform_int_distribution<int>(0, s - 1)(gen);
+        int x = -1, y = -1;
+        while (x == y) {
+            x = uniform_int_distribution<int>(0, s - 1)(gen);
+            y = uniform_int_distribution<int>(0, s - 1)(gen);
+        }
+        swap(p[x], p[y]);
+        double next_score = calculate_score(p, matrix);
+        double delta = next_score - current_score;
+        if (current_score < next_score + eps or bernoulli_distribution(exp(delta / temp))(gen)) {
+            current_score = next_score;
+            if (best_score < current_score) {
+                best_score = current_score;
+                result = p;
+// cerr << "score updated: " << best_score << endl;
+// visualize(p);
             }
+        } else {
             swap(p[x], p[y]);
-            int next_score = calculate_score(p, matrix);
-            int delta = next_score - current_score;
-            if (current_score <= next_score or bernoulli_distribution(exp(delta / temp))(gen)) {
-                current_score = next_score;
-                if (best_score < current_score) {
-                    best_score = current_score;
-                    result = p;
-cerr << "score updated: " << best_score << endl;
-visualize(p);
-                }
-            } else {
-                swap(p[x], p[y]);
-            }
         }
     }
     return result;

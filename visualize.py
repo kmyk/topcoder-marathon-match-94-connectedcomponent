@@ -52,7 +52,7 @@ def flood_fill(h, w, y, x, callback, pred):
 
 def calculate_score(s, matrix, p):
     used = [ False ] * (s ** 2)
-    result = { 'score': -1 }
+    result = { 'score': - float('inf') }
     for y in range(s):
         for x in range(s):
             if not used[y * s + x] and matrix[p[y] * s + p[x]]:
@@ -68,7 +68,7 @@ def calculate_score(s, matrix, p):
                 def pred(y, x):
                     return not used[y * s + x] and matrix[p[y] * s + p[x]]
                 flood_fill(s, s, y, x, callback, pred)
-                score = int(acc * math.sqrt(size))
+                score = acc * math.sqrt(size)
                 if result['score'] < score:
                     result['score'] = score
                     result['size'] = size
