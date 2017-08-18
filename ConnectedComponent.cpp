@@ -115,11 +115,13 @@ permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const
     return info;
 }
 
+#ifdef VISUALIZE
 void visualize(vector<int> const & p) {
     cerr << "VISUALIZE: " << p.size();
     for (int p_i : p) cerr << ' ' << p_i;
     cerr << endl;
 }
+#endif
 
 double estimate_base_score(int s, vector<char> const & matrix) {
     vector<int> p(s);
@@ -147,8 +149,12 @@ vector<int> ConnectedComponent::permute(vector<int> int_matrix) {
     // initialize
     vector<int> p(s);
     iota(whole(p), 0);
-// visualize(p);
-// cerr << "MESSAGE: s = " << s << endl;
+#ifdef VISUALIZE
+visualize(p);
+#endif
+#ifdef LOCAL
+cerr << "MESSAGE: s = " << s << endl;
+#endif
     {
         vector<int> cnt(s);
         repeat (y, s) {
@@ -165,34 +171,23 @@ vector<int> ConnectedComponent::permute(vector<int> int_matrix) {
         for (int i = 0; i < s; i += 2) p.push_back(t[i]);
         reverse(whole(p));
         for (int i = 1; i < s; i += 2) p.push_back(t[i]);
-// visualize(p);
+#ifdef VISUALIZE
+visualize(p);
+#endif
     }
     auto current = analyze_permutation(p, matrix, 0, 0, s, s);
     vector<int> result = p;
     double best_score = current.score;
-/*
-    repeat (iteration, 100) {
-        shuffle(whole(p), gen);
-        double next_evaluated, next_score; tie(next_evaluated, next_score) = calculate_evaluated_value(p, matrix);
-        if (current_evaluated < next_evaluated) {
-            current_evaluated = next_evaluated;
-            best_score = next_score;
-            result = p;
-visualize(p);
-cerr << "MESSAGE: first iteration = " << iteration << endl;
-cerr << "MESSAGE: evaluated = " << int(current_evaluated) << endl;
-cerr << "MESSAGE: score     = " << int(best_score) << endl;
-        }
-    }
-*/
     // simulated annealing
     double temp = INFINITY;
     for (int iteration = 0; ; ++ iteration) {
         if (iteration % 10 == 0) {
             double clock_end = rdtsc();
             if (clock_end - clock_begin > 9.5) {
-// cerr << "MESSAGE: iteration = " << iteration << endl;
-// cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << endl;
+#ifdef LOCAL
+cerr << "MESSAGE: iteration = " << iteration << endl;
+cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << endl;
+#endif
                 break;
             }
             temp = max(0.0, 10 - (clock_end - clock_begin)) / 10 * s * 10;
@@ -214,16 +209,20 @@ cerr << "MESSAGE: score     = " << int(best_score) << endl;
                 best_score = next.score;
                 current = next;
                 result = p;
-// visualize(p);
-// cerr << "MESSAGE: iteration = " << iteration << endl;
-// cerr << "MESSAGE: evaluated = " << int(current.evaluated) << endl;
-// cerr << "MESSAGE: score     = " << int(best_score) << endl;
+#ifdef VISUALIZE
+visualize(p);
+cerr << "MESSAGE: iteration = " << iteration << endl;
+cerr << "MESSAGE: evaluated = " << int(current.evaluated) << endl;
+cerr << "MESSAGE: score     = " << int(best_score) << endl;
+#endif
             }
         } else {
             swap(p[x], p[y]);
         }
     }
-// cerr << "MESSAGE: score = " << best_score << endl;
+#ifdef VISUALIZE
+cerr << "MESSAGE: score = " << best_score << endl;
+#endif
     return result;
 }
 

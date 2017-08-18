@@ -9,7 +9,8 @@ SEED ?= ${RANDOM}
 SEED := ${SEED}
 build:
 	${CXX} ${CXXFLAGS} -g -DLOCAL ${PROBLEM}.cpp
-visualize: build
+visualize:
+	${CXX} ${CXXFLAGS} -g -DLOCAL ${PROBLEM}.cpp -DVISUALIZE
 	[ -e test/${SEED}.in ] || ./generate.py ${SEED} | sponge test/${SEED}.in
 	./a.out < test/${SEED}.in 2>&1 >/dev/null | tee /dev/stderr | ./visualize.py test/${SEED}.in
 test: build
