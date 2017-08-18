@@ -64,8 +64,43 @@ double calculate_score(vector<int> const & p, vector<char> const & matrix) {
 }
 
 pair<double, double> calculate_evaluated_value(vector<int> const & p, vector<char> const & matrix) {
-    double score = calculate_score(p, matrix);
-    return { score, score };
+    int s = p.size();
+    auto at = [&](int y, int x) { return matrix[p[y] * s + p[x]]; };
+    auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
+    vector<char> used(s * s);
+    int size = 0, acc = 0;
+    bool centered = false;
+    function<void (int, int)> go = [&](int y, int x) {
+        used[y * s + x] = true;
+        size += 1;
+        acc += at(y, x);
+        if (abs(y - s / 2) + abs(x - s / 2) <= 3) {
+            centered = true;
+        }
+        repeat (i, 4) {
+            int ny = y + dy[i];
+            int nx = x + dx[i];
+            if (is_on_field(ny, nx) and not used[ny * s + nx] and at(ny, nx)) {
+                go(ny, nx);
+            }
+        }
+    };
+    double score = 0;
+    double evaluated = 0;
+    repeat (y, s) repeat (x, s) {
+        if (not used[y * s + x] and at(y, x)) {
+            size = acc = 0;
+            centered = false;
+            go(y, x);
+            if (score < acc * sqrt(size)) {
+                score = acc * sqrt(size);
+            }
+            if (centered and evaluated < acc * sqrt(size)) {
+                evaluated = acc * sqrt(size);
+            }
+        }
+    }
+    return { evaluated, score };
 }
 
 void visualize(vector<int> const & p) {
@@ -100,10 +135,29 @@ vector<int> ConnectedComponent::permute(vector<int> int_matrix) {
     // initialize
     vector<int> p(s);
     iota(whole(p), 0);
-// visualize(p);
+visualize(p);
 cerr << "MESSAGE: s = " << s << endl;
+{
+    vector<int> cnt(s);
+    repeat (y, s) {
+        repeat (x, s) {
+            int m = matrix[p[y] * s + p[x]];
+            cnt[p[y]] += max<int>(0, m ? m + 4 : 0);
+            cnt[p[x]] += max<int>(0, m ? m + 4 : 0);
+        }
+    }
+    vector<int> t(s);
+    iota(whole(t), 0);
+    sort(whole(t), [&](int i, int j) { return cnt[i] > cnt[j]; });
+    p.clear();
+    for (int i = 0; i < s; i += 2) p.push_back(t[i]);
+    reverse(whole(p));
+    for (int i = 1; i < s; i += 2) p.push_back(t[i]);
+visualize(p);
+}
     double best_score, current_evaluated; tie(current_evaluated, best_score) = calculate_evaluated_value(p, matrix);
     vector<int> result = p;
+/*
     repeat (iteration, 100) {
         shuffle(whole(p), gen);
         double next_evaluated, next_score; tie(next_evaluated, next_score) = calculate_evaluated_value(p, matrix);
@@ -111,13 +165,13 @@ cerr << "MESSAGE: s = " << s << endl;
             current_evaluated = next_evaluated;
             best_score = next_score;
             result = p;
-// visualize(p);
-// cerr << "MESSAGE: first iteration = " << iteration << endl;
-// cerr << "MESSAGE: evaluated = " << int(current_evaluated) << endl;
-// cerr << "MESSAGE: score     = " << int(best_score) << endl;
+visualize(p);
+cerr << "MESSAGE: first iteration = " << iteration << endl;
+cerr << "MESSAGE: evaluated = " << int(current_evaluated) << endl;
+cerr << "MESSAGE: score     = " << int(best_score) << endl;
         }
     }
-    p = result;
+*/
     // simulated annealing
     double temp = INFINITY;
     for (int iteration = 0; ; ++ iteration) {
@@ -131,7 +185,9 @@ cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << en
             temp = max(0.0, 10 - (clock_end - clock_begin)) / 10 * s * 10;
         }
         int x = uniform_int_distribution<int>(0, s - 1)(gen);
-        int y = bernoulli_distribution(0.4)(gen) ? (x + uniform_int_distribution<int>(1, 4)(gen)) % s : uniform_int_distribution<int>(0, s - 1)(gen);
+        int y = x < s / 2 ?
+            uniform_int_distribution<int>(max(s / 2, (s - 1) - x - 3), s - 1)(gen) :
+            uniform_int_distribution<int>(0, min(s / 2 - 1, (s - 1) - x + 3))(gen);
         swap(p[x], p[y]);
         double next_evaluated, next_score; tie(next_evaluated, next_score) = calculate_evaluated_value(p, matrix);
         double delta = next_evaluated - current_evaluated;
@@ -140,10 +196,10 @@ cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << en
             if (best_score < next_score) {
                 best_score = next_score;
                 result = p;
-// visualize(p);
-// cerr << "MESSAGE: iteration = " << iteration << endl;
-// cerr << "MESSAGE: evaluated = " << int(current_evaluated) << endl;
-// cerr << "MESSAGE: score     = " << int(best_score) << endl;
+visualize(p);
+cerr << "MESSAGE: iteration = " << iteration << endl;
+cerr << "MESSAGE: evaluated = " << int(current_evaluated) << endl;
+cerr << "MESSAGE: score     = " << int(best_score) << endl;
             }
         } else {
             swap(p[x], p[y]);

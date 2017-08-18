@@ -15,4 +15,4 @@ visualize: build
 test: build
 	java -jar tester.jar -exec ./a.out -seed ${SEED} -vis
 score: build
-	for i in `seq 10` ; do java -jar tester.jar -exec ./a.out -seed `expr ${SEED} + $$i` ; done | tee /dev/stderr | grep '^MESSAGE: ratio = ' | awk '{ a += $$4 } END { print "Total = " (a / 10) }'
+	for i in `seq 10` ; do seed=`expr ${SEED} + $$i` ; echo Seed = $$seed ; java -jar tester.jar -exec ./a.out -seed $$seed ; done | tee /dev/stderr | grep '^MESSAGE: ratio = ' | awk '{ a += $$4 } END { print "Total = " (a / 10) }'
