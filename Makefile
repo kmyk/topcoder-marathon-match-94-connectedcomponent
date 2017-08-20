@@ -1,4 +1,4 @@
-.PHONY: bild visualize score
+.PHONY: bild visualize test score
 
 PROBLEM := ConnectedComponent
 CXX := g++
@@ -7,15 +7,19 @@ CXXFLAGS := -std=c++11 -Wall -O2
 RANDOM = $(shell bash -c 'echo $$RANDOM')
 SEED ?= ${RANDOM}
 SEED := ${SEED}
-build:
-	${CXX} ${CXXFLAGS} -g -DLOCAL ${PROBLEM}.cpp
-visualize:
-	${CXX} ${CXXFLAGS} -g -DLOCAL ${PROBLEM}.cpp -DVISUALIZE
-	[ -e test/${SEED}.in ] || ./generate.py ${SEED} | sponge test/${SEED}.in
-	./a.out < test/${SEED}.in 2>&1 >/dev/null | tee /dev/stderr | ./visualize.py test/${SEED}.in
+
+build: a.out
+a.out: ${PROBLEM}.cpp
+	${CXX} ${CXXFLAGS} -g -DLOCAL $<
+a.out.visualize: ${PROBLEM}.cpp
+	${CXX} ${CXXFLAGS} -g -DLOCAL $< -o $@ -DVISUALIZE
+test/${SEED}.in:
+	./generate.py ${SEED} | sponge test/${SEED}.in
+visualize: a.out.visualize test/${SEED}.in
+	./a.out.visualize < test/${SEED}.in 2>&1 >/dev/null | tee /dev/stderr | ./visualize.py test/${SEED}.in
 test: build
 	java -jar tester.jar -exec ./a.out -seed ${SEED} -vis
 TIMESTAMP := $(shell date +%s)
-score: build
+score: a.out
 	unbuffer ./evaluate.py | tee log/${TIMESTAMP}.log
 	./plot log/${TIMESTAMP}.log

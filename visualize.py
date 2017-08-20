@@ -91,9 +91,14 @@ def get_color(m, highlight):
 
 def render_image(screen, s, matrix, p, scale):
     screen.fill(0x000000)
+    if s < 100:
+        width = 2
+    elif s < 200:
+        width = 1
+    else:
+        width = 0
     for y in range(s):
         for x in range(s):
-            width = 1
             color = 0xd3d3d3
             if y == x:
                 color = 0x333333
