@@ -15,5 +15,7 @@ visualize:
 	./a.out < test/${SEED}.in 2>&1 >/dev/null | tee /dev/stderr | ./visualize.py test/${SEED}.in
 test: build
 	java -jar tester.jar -exec ./a.out -seed ${SEED} -vis
+TIMESTAMP := $(shell date +%s)
 score: build
-	for i in `seq 10` ; do seed=`expr ${SEED} + $$i` ; echo Seed = $$seed ; java -jar tester.jar -exec ./a.out -seed $$seed ; done | tee /dev/stderr | grep '^MESSAGE: ratio = ' | awk '{ a += $$4 } END { print "Total = " (a / 10) }'
+	unbuffer ./evaluate.py | tee log/${TIMESTAMP}.log
+	./plot log/${TIMESTAMP}.log
