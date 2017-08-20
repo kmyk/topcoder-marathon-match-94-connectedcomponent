@@ -68,7 +68,7 @@ struct permutation_info_t {
     double evaluated;
     int ly, lx, ry, rx;
 };
-permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const & matrix, int ly, int lx, int ry, int rx) {
+permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const & matrix, int ly, int lx, int ry, int rx, double time) {
     int s = p.size();
     auto at = [&](int y, int x) { return matrix[p[y] * s + p[x]]; };
     auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
@@ -84,7 +84,7 @@ permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const
         setmin(nly, y);
         setmin(nlx, x);
         setmax(nry, y + 1);
-        setmax(nry, x + 1);
+        setmax(nrx, x + 1);
         repeat (i, 4) {
             int ny = y + dy[i];
             int nx = x + dx[i];
@@ -96,19 +96,22 @@ permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const
     permutation_info_t info = {};
     repeat_from (y, ly, ry) repeat_from (x, lx, rx) {
         if (not used[y * s + x] and at(y, x)) {
-            size = acc = 0;
+            size = 0;
+            acc = 0;
             centered = false;
             nly = y; nlx = x; nry = y + 1; nrx = x + 1;
             go(y, x);
-            if (info.score < acc * sqrt(size)) {
-                info.score = acc * sqrt(size);
-            }
-            if (centered and info.evaluated < acc * sqrt(size)) {
-                info.evaluated = acc * sqrt(size);
-                info.ly = nly;
-                info.lx = nlx;
-                info.ry = nry;
-                info.rx = nrx;
+            double score = acc * sqrt(size);
+            setmax(info.score, score);
+            if (centered) {
+                double evaluated = score;
+                if (info.evaluated < evaluated) {
+                    info.evaluated = evaluated;
+                    info.ly = nly;
+                    info.lx = nlx;
+                    info.ry = nry;
+                    info.rx = nrx;
+                }
             }
         }
     }
@@ -160,8 +163,9 @@ cerr << "MESSAGE: s = " << s << endl;
         repeat (y, s) {
             repeat (x, s) {
                 int m = matrix[p[y] * s + p[x]];
-                cnt[p[y]] += max<int>(0, m ? m + 4 : 0);
-                cnt[p[x]] += max<int>(0, m ? m + 4 : 0);
+                int value = m > 0 ? m + 4 : m == 0 ? -4 : m;
+                cnt[p[y]] += max<int>(0, value);
+                cnt[p[x]] += max<int>(0, value);
             }
         }
         vector<int> t(s);
@@ -175,29 +179,38 @@ cerr << "MESSAGE: s = " << s << endl;
 visualize(p);
 #endif
     }
-    auto current = analyze_permutation(p, matrix, 0, 0, s, s);
+    auto current = analyze_permutation(p, matrix, 0, 0, s, s, 0.0);
     vector<int> result = p;
     double best_score = current.score;
     // simulated annealing
     double temp = INFINITY;
+    double time = 0.0;
     for (int iteration = 0; ; ++ iteration) {
         if (iteration % 10 == 0) {
             double clock_end = rdtsc();
-            if (clock_end - clock_begin > 9.5) {
+            time = (clock_end - clock_begin) / 10.0;
+            if (time > 0.95) {
 #ifdef LOCAL
 cerr << "MESSAGE: iteration = " << iteration << endl;
 cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << endl;
+cerr << "MESSAGE: avg m = " << accumulate(whole(matrix), 0) /(double) (s * s) << endl;
+int cnt[3] = {};
+repeat (z, s * s) cnt[matrix[z] > 0 ? 0 : matrix[z] == 0 ? 1 : 2] += 1;
+cerr << "MESSAGE: positive : zero : negative = "
+    << cnt[0] /(double) (s * s) << " : "
+    << cnt[1] /(double) (s * s) << " : "
+    << cnt[2] /(double) (s * s) << endl;
 #endif
                 break;
             }
-            temp = max(0.0, 10 - (clock_end - clock_begin)) / 10 * s;
+            temp = (1 - time) * s;
         }
         int neightborhood_type = uniform_int_distribution<int>(0, 9)(gen);
         int x = -1, y = -1;
         while (x == y) {
             x = bernoulli_distribution(0.5)(gen) ?
-                uniform_int_distribution<int>(max(0, current.ly - 1), min(s, current.ry + 1) - 1)(gen) :
-                uniform_int_distribution<int>(max(0, current.lx - 1), min(s, current.rx + 1) - 1)(gen);
+                uniform_int_distribution<int>(max(0, current.ly - 3), min(s, current.ry + 3) - 1)(gen) :
+                uniform_int_distribution<int>(max(0, current.lx - 3), min(s, current.rx + 3) - 1)(gen);
             y = uniform_int_distribution<int>(0, s - 1)(gen);
         }
         if (neightborhood_type <= 3) {
@@ -215,9 +228,10 @@ cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << en
                 max(0, current.ly - 5),
                 max(0, current.lx - 5),
                 min(s, current.ry + 5),
-                min(s, current.rx + 5) );
+                min(s, current.rx + 5),
+                time);
         double delta = next.evaluated - current.evaluated;
-        if (current.evaluated < next.evaluated + eps or bernoulli_distribution(exp(delta / temp))(gen)) {
+        if (current.evaluated < next.evaluated + 10 or bernoulli_distribution(exp(delta / temp))(gen)) {
             current.evaluated = next.evaluated;
             if (best_score < next.score) {
                 best_score = next.score;
@@ -225,8 +239,11 @@ cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << en
                 result = p;
 #ifdef VISUALIZE
 visualize(p);
+#endif
+#ifdef LOCAL
 cerr << "MESSAGE: iteration = " << iteration << endl;
 cerr << "MESSAGE: evaluated = " << int(current.evaluated) << endl;
+cerr << "MESSAGE: time      = " << time << endl;
 cerr << "MESSAGE: score     = " << int(best_score) << endl;
 #endif
             }
