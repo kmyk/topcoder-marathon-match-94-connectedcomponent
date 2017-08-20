@@ -166,7 +166,12 @@ def visualize(s, matrix, ps):
                         swaps += [ z ]
                     update_screen(screen, s, matrix, ps, ix, scale, swaps)
                 elif event.button == 3: # right
-                    if len(swaps) % 2 == 1:
+                    if len(swaps) % 2 == 0:
+                        if swaps:
+                            swaps.pop()
+                            swaps.pop()
+                            update_screen(screen, s, matrix, ps, ix, scale, swaps)
+                    else:
                         swaps.pop()
                         update_screen(screen, s, matrix, ps, ix, scale, swaps)
         time.sleep(1 / 60)
