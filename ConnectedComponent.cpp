@@ -1,3 +1,4 @@
+#pragma GCC optimize "O3"
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -193,13 +194,14 @@ visualize(p);
     double temp = INFINITY;
     double time = 0.0;
     for (int iteration = 0; ; ++ iteration) {
-        if (iteration % 10 == 0) {
+        if (iteration % 10 == 0 or time > 0.95) {
             double clock_end = rdtsc();
             time = (clock_end - clock_begin) / 10.0;
-            if (time > 0.95) {
+            if (time > 0.98) {
 #ifdef LOCAL
 cerr << "MESSAGE: iteration = " << iteration << endl;
 cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << endl;
+cerr << "MESSAGE: time = " << time << endl;
 cerr << "MESSAGE: avg m = " << accumulate(whole(matrix), 0) /(double) (s * s) << endl;
 int cnt[3] = {};
 repeat (z, s * s) cnt[matrix[z] > 0 ? 0 : matrix[z] == 0 ? 1 : 2] += 1;
