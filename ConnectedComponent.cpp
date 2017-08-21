@@ -223,9 +223,9 @@ cerr << "MESSAGE: positive : zero : negative = "
             }
             temp = (1 - time) * s;
         }
-        constexpr int neightborhood_type_swap = 4;
-        constexpr int neightborhood_type_rotate = 4;
-        constexpr int neightborhood_type_reverse = 2;
+        constexpr int neightborhood_type_swap = 3;
+        constexpr int neightborhood_type_rotate = 5;
+        constexpr int neightborhood_type_reverse = 1;
         int neightborhood_type = uniform_int_distribution<int>(0,
                 + neightborhood_type_swap
                 + neightborhood_type_rotate
