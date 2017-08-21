@@ -62,4 +62,18 @@ plotして図形で見比べるようにする
 
 TLEを10秒から100秒にして試したら全体に改善することが判明。高速化をやっていけばよさそう
 
+-   中央付近から1回dfsするだけにして高速化
+    -   297fb16aee3b7d432bfd82a8aa8ea060a3fa1008
+    -   9位 826785.71点 08.21.2017 00:31:10
+    -   1a43f9be971f7e53a422d0a8ea90ef5c50ffc832 の提出後に私のひとつ上にいた後輩を抜いているので、これより改善されている
+-   `#pragma GCC target "avx"` したら SIGILL した
+    -   EC2 m3.large で動いているらしい: <https://apps.topcoder.com/wiki/display/tc/Processing+server+specifications+(AWS)>
+    -   Intel AVX は有効らしいが何故だ 利用方式のためか: <https://aws.amazon.com/jp/ec2/instance-types/>
+-   DFSをstackでやるなどして高速化
+    -   adba97cac209c228b160429b55fea74699886efe
+    -   ちょっと悪くなった  802631.58点 -> 796315.79点
+-   TopCoder鯖上で速くなるよう調整
+    -   ab5d7922f8c1459aacd64da3bb52b74e43981b09
+    -   良くなって ふたつ前より増加 793448.28点 -> 810000.00点
+
 終了時刻: 08.24.2017 10:00 JST
