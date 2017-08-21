@@ -78,7 +78,7 @@ struct permutation_info_t {
     int ly, lx, ry, rx;
     int size, sum;
 };
-permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const & matrix, int ly, int lx, int ry, int rx, double time) {
+permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const & matrix) {
     int s = p.size();
     auto at = [&](int y, int x) { return matrix[p[y] * s + p[x]]; };
     auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
@@ -196,7 +196,7 @@ cerr << "MESSAGE: s = " << s << endl;
 visualize(p);
 #endif
     }
-    auto current = analyze_permutation(p, matrix, 0, 0, s, s, 0.0);
+    auto current = analyze_permutation(p, matrix);
     vector<int> result = p;
     double best_score = current.score;
     // simulated annealing
@@ -223,7 +223,14 @@ cerr << "MESSAGE: positive : zero : negative = "
             }
             temp = (1 - time) * s;
         }
-        int neightborhood_type = uniform_int_distribution<int>(0, 9)(gen);
+        constexpr int neightborhood_type_swap = 4;
+        constexpr int neightborhood_type_rotate = 4;
+        constexpr int neightborhood_type_reverse = 2;
+        int neightborhood_type = uniform_int_distribution<int>(0,
+                + neightborhood_type_swap
+                + neightborhood_type_rotate
+                + neightborhood_type_reverse
+                - 1)(gen);
         int x = -1, y = -1;
         while (x == y) {
             x = bernoulli_distribution(0.5)(gen) ?
@@ -231,9 +238,9 @@ cerr << "MESSAGE: positive : zero : negative = "
                 uniform_int_distribution<int>(max(0, current.lx - 3), min(s, current.rx + 3) - 1)(gen);
             y = uniform_int_distribution<int>(0, s - 1)(gen);
         }
-        if (neightborhood_type <= 3) {
+        if (neightborhood_type < neightborhood_type_swap) {
             swap(p[x], p[y]);
-        } else if (neightborhood_type <= 7) {
+        } else if (neightborhood_type < neightborhood_type_swap + neightborhood_type_rotate) {
             if (x < y) {
                 rotate(p.begin() + x, p.begin() + (x + 1), p.begin() + (y + 1));
             } else {
@@ -242,12 +249,7 @@ cerr << "MESSAGE: positive : zero : negative = "
         } else {
             reverse(p.begin() + min(x, y), p.begin() + (max(x, y) + 1));
         }
-        auto next = analyze_permutation(p, matrix,
-                max(0, current.ly - 5),
-                max(0, current.lx - 5),
-                min(s, current.ry + 5),
-                min(s, current.rx + 5),
-                time);
+        auto next = analyze_permutation(p, matrix);
         double delta = next.evaluated - current.evaluated;
         if (current.evaluated < next.evaluated + 10 or bernoulli_distribution(exp(delta / temp))(gen)) {
             current.evaluated = next.evaluated;
@@ -266,9 +268,9 @@ cerr << "MESSAGE: score     = " << int(best_score) << endl;
 #endif
             }
         } else {
-            if (neightborhood_type <= 3) {
+            if (neightborhood_type < neightborhood_type_swap) {
                 swap(p[x], p[y]);
-            } else if (neightborhood_type <= 7) {
+            } else if (neightborhood_type < neightborhood_type_swap + neightborhood_type_rotate) {
                 if (x < y) {
                     rotate(p.begin() + x, p.begin() + y, p.begin() + (y + 1));
                 } else {
