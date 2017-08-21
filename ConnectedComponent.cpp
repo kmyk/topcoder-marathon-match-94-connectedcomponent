@@ -3,6 +3,7 @@
 #include <cstring>
 #include <vector>
 #include <algorithm>
+#include <memory>
 #include <array>
 #include <set>
 #include <map>
@@ -67,23 +68,21 @@ double calculate_score(vector<int> const & p, vector<char> const & matrix) {
     return result;
 }
 
-char g_used[MAX_S * MAX_S] = {};
-int16_t g_stack[2 * MAX_S * MAX_S];
-int g_stack_size = 0;
-
-struct permutation_info_t {
-    double score;
-    double evaluated;
-    int cy, cx;
+struct rectangle_t {
     int ly, lx, ry, rx;
-    int size, sum;
 };
-permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const & matrix, int ly, int lx, int ry, int rx, double time) {
+bool is_contained(rectangle_t a, rectangle_t b) {
+    return b.ly <= a.ly and a.ry <= b.ry
+        and b.lx <= a.lx and a.rx <= b.rx;
+}
+bool is_contained(int y, int x, rectangle_t b) {
+    return b.ly <= y and y < b.ry
+        and b.lx <= x and x < b.rx;
+}
+
+pair<int, int> find_the_center(vector<int> const & p, vector<char> const & matrix) {
     int s = p.size();
     auto at = [&](int y, int x) { return matrix[p[y] * s + p[x]]; };
-    auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
-    // find the center
-    permutation_info_t info = {};
     for (int delta = 0; delta < s; ++ delta) {
         int l = s / 2 - delta;
         int r = s / 2 + delta + 1;
@@ -91,34 +90,155 @@ permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const
             int d = (abs(y - s / 2) == delta ? 1 : r - l - 1);
             for (int x = l; x < r; x += d) {
                 if (at(y, x) >= 1) {
-                    info.cy = y;
-                    info.cx = x;
-                    delta = y = x = s;
-                    break;
+                    return { y, x };
                 }
             }
         }
     }
-    // do dfs
-    info.ly = s;
-    info.lx = s;
-    info.ry = 0;
-    info.rx = 0;
+    assert (false);
+}
+
+char g_used[MAX_S * MAX_S] = {};
+int16_t g_stack[2 * MAX_S * MAX_S];
+int g_stack_size = 0;
+
+struct prepared_slice_t {
+    rectangle_t rect;
+    int size, sum;
+    vector<tuple<int16_t, int16_t, int16_t, int16_t> > frontier;
+};
+struct prepared_info_t {
+    int cy, cx;
+    rectangle_t rect;
+    int size, sum;
+    vector<shared_ptr<prepared_slice_t> > slices;
+};
+prepared_info_t prepare_to_analyze(vector<int> const & p, vector<char> const & matrix) {
+    int s = p.size();
+    auto at = [&](int y, int x) { return matrix[p[y] * s + p[x]]; };
+    auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
+    prepared_info_t info = {};
+    tie(info.cy, info.cx) = find_the_center(p, matrix);
+    info.rect.ly = s;
+    info.rect.lx = s;
+    info.rect.ry = 0;
+    info.rect.rx = 0;
+    info.size = 0;
+    info.sum = 0;
+    int radius = 10;
     auto push = [&](int y, int x) {
+#ifdef LOCAL
+assert (not g_used[y * s + x]);
+assert (at(y, x));
+#endif
         g_used[y * s + x] = true;
         g_stack[g_stack_size ++] = y;
         g_stack[g_stack_size ++] = x;
+        setmin(info.rect.ly, y);
+        setmax(info.rect.ry, y + 1);
+        setmin(info.rect.lx, x);
+        setmax(info.rect.rx, x + 1);
         info.size += 1;
         info.sum += at(y, x);
     };
     push(info.cy, info.cx);
+    while (true) {
+        shared_ptr<prepared_slice_t> slice = make_shared<prepared_slice_t>();
+        while (g_stack_size) {
+            int x = g_stack[-- g_stack_size];
+            int y = g_stack[-- g_stack_size];
+            repeat (i, 4) {
+                int ny = y + dy[i];
+                int nx = x + dx[i];
+                if (is_on_field(ny, nx)) {
+                    if (info.cy - radius <= ny and ny <= info.cy + radius
+                            and info.cx - radius <= nx and nx <= info.cx + radius) {
+                        if (not g_used[ny * s + nx] and at(ny, nx)) {
+                            push(ny, nx);
+                        }
+                    } else {
+                        slice->frontier.emplace_back(ny, nx, y, x);
+                    }
+                }
+            }
+        }
+        slice->rect = info.rect;
+        slice->sum  = info.sum;
+        slice->size = info.size;
+        for (auto it : slice->frontier) {
+            int y, x; tie(y, x, ignore, ignore) = it;
+            if (not g_used[y * s + x] and at(y, x)) {
+                push(y, x);
+            }
+        }
+        info.slices.push_back(slice);
+        if (slice->frontier.empty()) break;
+        radius += 10;
+    }
+    repeat_from (y, info.rect.ly, info.rect.ry) {
+        memset((void *)(g_used + y * s + info.rect.lx), 0, (size_t)(info.rect.rx - info.rect.lx));
+    }
+    return info;
+}
+
+struct permutation_info_t {
+    double score;
+    double evaluated;
+    int cy, cx;
+    rectangle_t rect;
+    int size, sum;
+};
+permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const & matrix, prepared_info_t const & prepared, rectangle_t preserved) {
+    int s = p.size();
+    auto at = [&](int y, int x) { return matrix[p[y] * s + p[x]]; };
+    auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
+    permutation_info_t info = {};
+    auto push = [&](int y, int x) {
+#ifdef LOCAL
+assert (not g_used[y * s + x]);
+assert (at(y, x));
+#endif
+        g_used[y * s + x] = true;
+        g_stack[g_stack_size ++] = y;
+        g_stack[g_stack_size ++] = x;
+        setmin(info.rect.ly, y);
+        setmax(info.rect.ry, y + 1);
+        setmin(info.rect.lx, x);
+        setmax(info.rect.rx, x + 1);
+        info.size += 1;
+        info.sum += at(y, x);
+    };
+    if (not is_contained(prepared.cy, prepared.cx, preserved)) {
+        int cy, cx; tie(cy, cx) = find_the_center(p, matrix);
+        push(cy, cx);
+    } else {
+        info.cy = prepared.cy;
+        info.cx = prepared.cx;
+        if (not is_contained(prepared.slices[0]->rect, preserved)) {
+            push(info.cy, info.cx);
+            info.rect.ly = info.cy;
+            info.rect.lx = info.cx;
+            info.rect.ry = info.cy + 1;
+            info.rect.rx = info.cx + 1;
+        } else {
+            auto it = prepared.slices.begin();
+            while (next(it) != prepared.slices.end() and is_contained((*next(it))->rect, preserved)) ++ it;
+            auto & slice = **it;
+            info.rect = slice.rect;
+            info.sum  += slice.sum;
+            info.size += slice.size;
+            for (auto frontier_i : slice.frontier) {
+                int y, x, py, px; tie(y, x, py, px) = frontier_i;
+                if (at(y, x)) {
+                    g_used[py * s + px] = true;
+                    push(y, x);
+                }
+            }
+        }
+    }
     while (g_stack_size) {
         int x = g_stack[-- g_stack_size];
         int y = g_stack[-- g_stack_size];
-        setmin(info.ly, y);
-        setmax(info.ry, y + 1);
-        setmin(info.lx, x);
-        setmax(info.rx, x + 1);
         repeat (i, 4) {
             int ny = y + dy[i];
             int nx = x + dx[i];
@@ -127,8 +247,8 @@ permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const
             }
         }
     }
-    repeat_from (y, info.ly, info.ry) {
-        memset((void *)(g_used + y * s + info.lx), 0, (size_t)(info.rx - info.lx));
+    repeat_from (y, info.rect.ly, info.rect.ry) {
+        memset((void *)(g_used + y * s + info.rect.lx), 0, (size_t)(info.rect.rx - info.rect.lx));
     }
     info.score = info.sum * sqrt(info.size);
     info.evaluated = info.score;
@@ -196,7 +316,8 @@ cerr << "MESSAGE: s = " << s << endl;
 visualize(p);
 #endif
     }
-    auto current = analyze_permutation(p, matrix, 0, 0, s, s, 0.0);
+    prepared_info_t prepared = prepare_to_analyze(p, matrix);
+    permutation_info_t current = analyze_permutation(p, matrix, prepared, (rectangle_t) { 0, 0, s, s });
     vector<int> result = p;
     double best_score = current.score;
     // simulated annealing
@@ -223,17 +344,41 @@ cerr << "MESSAGE: positive : zero : negative = "
             }
             temp = (1 - time) * s;
         }
-        int neightborhood_type = uniform_int_distribution<int>(0, 9)(gen);
+        constexpr int neightborhood_type_swap = 4;
+        constexpr int neightborhood_type_rotate = 4;
+        constexpr int neightborhood_type_reverse = 2;
+        int neightborhood_type = uniform_int_distribution<int>(0,
+                + neightborhood_type_swap
+                + neightborhood_type_rotate
+                + neightborhood_type_reverse
+                - 1)(gen);
         int x = -1, y = -1;
         while (x == y) {
             x = bernoulli_distribution(0.5)(gen) ?
-                uniform_int_distribution<int>(max(0, current.ly - 3), min(s, current.ry + 3) - 1)(gen) :
-                uniform_int_distribution<int>(max(0, current.lx - 3), min(s, current.rx + 3) - 1)(gen);
+                uniform_int_distribution<int>(max(0, prepared.rect.ly - 3), min(s, prepared.rect.ry + 3) - 1)(gen) :
+                uniform_int_distribution<int>(max(0, prepared.rect.lx - 3), min(s, prepared.rect.rx + 3) - 1)(gen);
             y = uniform_int_distribution<int>(0, s - 1)(gen);
         }
-        if (neightborhood_type <= 3) {
+        rectangle_t preserved = { -1, -1, -1, -1 };
+        if (neightborhood_type < neightborhood_type_swap) {
+            int l = min(x, y) + 1;
+            int r = max(x, y);
+            rectangle_t rect = { l, l, r, r };
+            if (is_contained(prepared.cy, prepared.cx, rect)) {
+                preserved = rect;
+            }
+        } else {
+            int l = min(x, y);
+            int r = max(x, y) + 1;
+            if (prepared.cy < l and prepared.cx < l) {
+                preserved = { 0, 0, l, l };
+            } else if (r <= prepared.cy and r <= prepared.cx) {
+                preserved = { r, r, s, s };
+            }
+        }
+        if (neightborhood_type < neightborhood_type_swap) {
             swap(p[x], p[y]);
-        } else if (neightborhood_type <= 7) {
+        } else if (neightborhood_type < neightborhood_type_swap + neightborhood_type_rotate) {
             if (x < y) {
                 rotate(p.begin() + x, p.begin() + (x + 1), p.begin() + (y + 1));
             } else {
@@ -242,15 +387,11 @@ cerr << "MESSAGE: positive : zero : negative = "
         } else {
             reverse(p.begin() + min(x, y), p.begin() + (max(x, y) + 1));
         }
-        auto next = analyze_permutation(p, matrix,
-                max(0, current.ly - 5),
-                max(0, current.lx - 5),
-                min(s, current.ry + 5),
-                min(s, current.rx + 5),
-                time);
+        auto next = analyze_permutation(p, matrix, prepared, preserved);
         double delta = next.evaluated - current.evaluated;
         if (current.evaluated < next.evaluated + 10 or bernoulli_distribution(exp(delta / temp))(gen)) {
             current.evaluated = next.evaluated;
+            prepared = prepare_to_analyze(p, matrix);
             if (best_score < next.score) {
                 best_score = next.score;
                 current = next;
@@ -261,14 +402,16 @@ visualize(p);
 #ifdef LOCAL
 cerr << "MESSAGE: iteration = " << iteration << endl;
 cerr << "MESSAGE: evaluated = " << int(current.evaluated) << endl;
-cerr << "MESSAGE: time      = " << time << endl;
-cerr << "MESSAGE: score     = " << int(best_score) << endl;
+cerr << "MESSAGE: time = " << time << endl;
+cerr << "MESSAGE: score = " << int(best_score) << endl;
+cerr << "MESSAGE: size = " << current.size << endl;
+cerr << "MESSAGE: sum = " << current.sum  << endl;
 #endif
             }
         } else {
-            if (neightborhood_type <= 3) {
+            if (neightborhood_type < neightborhood_type_swap) {
                 swap(p[x], p[y]);
-            } else if (neightborhood_type <= 7) {
+            } else if (neightborhood_type < neightborhood_type_swap + neightborhood_type_rotate) {
                 if (x < y) {
                     rotate(p.begin() + x, p.begin() + y, p.begin() + (y + 1));
                 } else {
