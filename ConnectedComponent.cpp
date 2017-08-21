@@ -74,13 +74,11 @@ permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const
     auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
     vector<char> used(s * s);
     int size = -1, acc = -1;
-    bool centered = false;
     int nly = -1, nlx = -1, nry = -1, nrx = -1;
     function<void (int, int)> go = [&](int y, int x) {
         used[y * s + x] = true;
         size += 1;
         acc += at(y, x);
-        if (abs(y - s / 2) + abs(x - s / 2) <= 3) centered = true;
         setmin(nly, y);
         setmin(nlx, x);
         setmax(nry, y + 1);
@@ -94,24 +92,21 @@ permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const
         }
     };
     permutation_info_t info = {};
-    repeat_from (y, ly, ry) repeat_from (x, lx, rx) {
+    repeat_from (y, s / 2 - 3, s / 2 + 3) repeat_from (x, s / 2 - 3, s / 2 + 3) {
         if (not used[y * s + x] and at(y, x)) {
             size = 0;
             acc = 0;
-            centered = false;
             nly = y; nlx = x; nry = y + 1; nrx = x + 1;
             go(y, x);
             double score = acc * sqrt(size);
             setmax(info.score, score);
-            if (centered) {
-                double evaluated = score;
-                if (info.evaluated < evaluated) {
-                    info.evaluated = evaluated;
-                    info.ly = nly;
-                    info.lx = nlx;
-                    info.ry = nry;
-                    info.rx = nrx;
-                }
+            double evaluated = score;
+            if (info.evaluated < evaluated) {
+                info.evaluated = evaluated;
+                info.ly = nly;
+                info.lx = nlx;
+                info.ry = nry;
+                info.rx = nrx;
             }
         }
     }
