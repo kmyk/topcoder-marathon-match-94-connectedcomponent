@@ -1,5 +1,6 @@
 #pragma GCC optimize "O3"
 #include <iostream>
+#include <cstring>
 #include <vector>
 #include <algorithm>
 #include <array>
@@ -35,6 +36,7 @@ constexpr double eps = 1e-6;
 default_random_engine gen;
 
 class ConnectedComponent { public: vector<int> permute(vector<int> matrix); };
+constexpr int MAX_S = 500;
 
 double calculate_score(vector<int> const & p, vector<char> const & matrix) {
     int s = p.size();
@@ -64,6 +66,10 @@ double calculate_score(vector<int> const & p, vector<char> const & matrix) {
     }
     return result;
 }
+
+char g_used[MAX_S * MAX_S] = {};
+int16_t g_stack[2 * MAX_S * MAX_S];
+int g_stack_size = 0;
 
 struct permutation_info_t {
     double score;
@@ -98,17 +104,17 @@ permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const
     info.lx = s;
     info.ry = 0;
     info.rx = 0;
-    vector<char> used(s * s);
-    stack<pair<int, int> > stk;
     auto push = [&](int y, int x) {
-        used[y * s + x] = true;
-        stk.emplace(y, x);
+        g_used[y * s + x] = true;
+        g_stack[g_stack_size ++] = y;
+        g_stack[g_stack_size ++] = x;
         info.size += 1;
         info.sum += at(y, x);
     };
     push(info.cy, info.cx);
-    while (not stk.empty()) {
-        int y, x; tie(y, x) = stk.top(); stk.pop();
+    while (g_stack_size) {
+        int x = g_stack[-- g_stack_size];
+        int y = g_stack[-- g_stack_size];
         setmin(info.ly, y);
         setmax(info.ry, y + 1);
         setmin(info.lx, x);
@@ -116,10 +122,13 @@ permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const
         repeat (i, 4) {
             int ny = y + dy[i];
             int nx = x + dx[i];
-            if (is_on_field(ny, nx) and not used[ny * s + nx] and at(ny, nx)) {
+            if (is_on_field(ny, nx) and not g_used[ny * s + nx] and at(ny, nx)) {
                 push(ny, nx);
             }
         }
+    }
+    repeat_from (y, info.ly, info.ry) {
+        memset((void *)(g_used + y * s + info.lx), 0, (size_t)(info.rx - info.lx));
     }
     info.score = info.sum * sqrt(info.size);
     info.evaluated = info.score;
