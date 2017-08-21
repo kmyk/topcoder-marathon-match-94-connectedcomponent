@@ -21,5 +21,5 @@ test: build
 	java -jar tester.jar -exec ./a.out -seed ${SEED} -vis
 TIMESTAMP := $(shell date +%s)
 score: a.out
-	unbuffer ./evaluate.py | tee log/${TIMESTAMP}.log
-	./plot log/${TIMESTAMP}.log
+	unbuffer ./evaluate.py -j2 -s5 | tee log/${TIMESTAMP}.log
+	./plot.py log/${TIMESTAMP}.log

@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import os
 
 plt.style.use('ggplot')
-matplotlib.rc('font', family='meiryo')
 
 if __name__ == '__main__':
     import argparse
@@ -18,5 +17,5 @@ if __name__ == '__main__':
         df = pd.read_csv(path, delimiter='\t', index_col=0)
         df = df.rename(columns={ 'score': os.path.basename(path) })
         acc = pd.concat([ acc, df ], axis=1)
-    acc.plot(y=acc.columns)
+    acc.plot(y=acc.columns, linestyle='-', marker='o')
     plt.show()
