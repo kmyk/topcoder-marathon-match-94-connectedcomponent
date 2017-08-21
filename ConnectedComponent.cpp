@@ -4,6 +4,7 @@
 #include <array>
 #include <set>
 #include <map>
+#include <stack>
 #include <queue>
 #include <tuple>
 #include <unordered_set>
@@ -66,50 +67,61 @@ double calculate_score(vector<int> const & p, vector<char> const & matrix) {
 struct permutation_info_t {
     double score;
     double evaluated;
+    int cy, cx;
     int ly, lx, ry, rx;
+    int size, sum;
 };
 permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const & matrix, int ly, int lx, int ry, int rx, double time) {
     int s = p.size();
     auto at = [&](int y, int x) { return matrix[p[y] * s + p[x]]; };
     auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
+    // find the center
+    permutation_info_t info = {};
+    for (int delta = 0; delta < s; ++ delta) {
+        int l = s / 2 - delta;
+        int r = s / 2 + delta + 1;
+        repeat_from (y, l, r) {
+            int d = (abs(y - s / 2) == delta ? 1 : r - l - 1);
+            for (int x = l; x < r; x += d) {
+                if (at(y, x) >= 1) {
+                    info.cy = y;
+                    info.cx = x;
+                    delta = y = x = s;
+                    break;
+                }
+            }
+        }
+    }
+    // do dfs
+    info.ly = s;
+    info.lx = s;
+    info.ry = 0;
+    info.rx = 0;
     vector<char> used(s * s);
-    int size = -1, acc = -1;
-    int nly = -1, nlx = -1, nry = -1, nrx = -1;
-    function<void (int, int)> go = [&](int y, int x) {
+    stack<pair<int, int> > stk;
+    auto push = [&](int y, int x) {
         used[y * s + x] = true;
-        size += 1;
-        acc += at(y, x);
-        setmin(nly, y);
-        setmin(nlx, x);
-        setmax(nry, y + 1);
-        setmax(nrx, x + 1);
+        stk.emplace(y, x);
+        info.size += 1;
+        info.sum += at(y, x);
+    };
+    push(info.cy, info.cx);
+    while (not stk.empty()) {
+        int y, x; tie(y, x) = stk.top(); stk.pop();
+        setmin(info.ly, y);
+        setmax(info.ry, y + 1);
+        setmin(info.lx, x);
+        setmax(info.rx, x + 1);
         repeat (i, 4) {
             int ny = y + dy[i];
             int nx = x + dx[i];
             if (is_on_field(ny, nx) and not used[ny * s + nx] and at(ny, nx)) {
-                go(ny, nx);
-            }
-        }
-    };
-    permutation_info_t info = {};
-    repeat_from (y, s / 2 - 3, s / 2 + 3) repeat_from (x, s / 2 - 3, s / 2 + 3) {
-        if (not used[y * s + x] and at(y, x)) {
-            size = 0;
-            acc = 0;
-            nly = y; nlx = x; nry = y + 1; nrx = x + 1;
-            go(y, x);
-            double score = acc * sqrt(size);
-            setmax(info.score, score);
-            double evaluated = score;
-            if (info.evaluated < evaluated) {
-                info.evaluated = evaluated;
-                info.ly = nly;
-                info.lx = nlx;
-                info.ry = nry;
-                info.rx = nrx;
+                push(ny, nx);
             }
         }
     }
+    info.score = info.sum * sqrt(info.size);
+    info.evaluated = info.score;
     return info;
 }
 
