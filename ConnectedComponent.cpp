@@ -164,8 +164,8 @@ cerr << "MESSAGE: s = " << s << endl;
             repeat (x, s) {
                 int m = matrix[p[y] * s + p[x]];
                 int value = m > 0 ? m + 4 : m == 0 ? -4 : m;
-                cnt[p[y]] += max<int>(0, value);
-                cnt[p[x]] += max<int>(0, value);
+                cnt[p[y]] += value;
+                cnt[p[x]] += value;
             }
         }
         vector<int> t(s);
