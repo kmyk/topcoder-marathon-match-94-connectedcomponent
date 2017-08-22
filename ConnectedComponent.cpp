@@ -38,52 +38,13 @@ default_random_engine gen;
 class ConnectedComponent { public: vector<int> permute(vector<int> matrix); };
 constexpr int MAX_S = 500;
 
-double calculate_score(vector<int> const & p, vector<char> const & matrix) {
-    int s = p.size();
-    auto at = [&](int y, int x) { return matrix[p[y] * s + p[x]]; };
-    auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
-    vector<char> used(s * s);
-    int size = 0, acc = 0;
-    function<void (int, int)> go = [&](int y, int x) {
-        used[y * s + x] = true;
-        size += 1;
-        acc += at(y, x);
-        repeat (i, 4) {
-            int ny = y + dy[i];
-            int nx = x + dx[i];
-            if (is_on_field(ny, nx) and not used[ny * s + nx] and at(ny, nx)) {
-                go(ny, nx);
-            }
-        }
-    };
-    double result = 0;
-    repeat (y, s) repeat (x, s) {
-        if (not used[y * s + x] and at(y, x)) {
-            size = acc = 0;
-            go(y, x);
-            setmax(result, acc * sqrt(size));
-        }
-    }
-    return result;
-}
+int s, sq_s;
+int16_t p[MAX_S];
+char matrix[MAX_S * MAX_S];
+int at(int y, int x) { return matrix[p[y] * s + p[x]]; };
+bool is_on_field(int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
 
-char g_used[MAX_S * MAX_S] = {};
-int16_t g_stack[2 * MAX_S * MAX_S];
-int g_stack_size = 0;
-
-struct permutation_info_t {
-    double score;
-    double evaluated;
-    int cy, cx;
-    int ly, lx, ry, rx;
-    int size, sum;
-};
-permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const & matrix) {
-    int s = p.size();
-    auto at = [&](int y, int x) { return matrix[p[y] * s + p[x]]; };
-    auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
-    // find the center
-    permutation_info_t info = {};
+pair<int, int> find_center() {
     for (int delta = 0; delta < s; ++ delta) {
         int l = s / 2 - delta;
         int r = s / 2 + delta + 1;
@@ -91,34 +52,44 @@ permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const
             int d = (abs(y - s / 2) == delta ? 1 : r - l - 1);
             for (int x = l; x < r; x += d) {
                 if (at(y, x) >= 1) {
-                    info.cy = y;
-                    info.cx = x;
-                    delta = y = x = s;
-                    break;
+                    return { y, x };
                 }
             }
         }
     }
-    // do dfs
-    info.ly = s;
-    info.lx = s;
-    info.ry = 0;
-    info.rx = 0;
+    assert (false);
+}
+
+char g_used[MAX_S * MAX_S] = {};
+int16_t g_stack[2 * MAX_S * MAX_S];
+int g_stack_size = 0;
+int g_cy, g_cx;
+int g_ly, g_lx;
+int g_ry, g_rx;
+
+double analyze_permutation() {
+    tie(g_cy, g_cx) = find_center();
+    g_ly = s;
+    g_lx = s;
+    g_ry = 0;
+    g_rx = 0;
+    int size = 0;
+    int sum = 0;
     auto push = [&](int y, int x) {
         g_used[y * s + x] = true;
         g_stack[g_stack_size ++] = y;
         g_stack[g_stack_size ++] = x;
-        info.size += 1;
-        info.sum += at(y, x);
+        size += 1;
+        sum += at(y, x);
     };
-    push(info.cy, info.cx);
+    push(g_cy, g_cx);
     while (g_stack_size) {
         int x = g_stack[-- g_stack_size];
         int y = g_stack[-- g_stack_size];
-        setmin(info.ly, y);
-        setmax(info.ry, y + 1);
-        setmin(info.lx, x);
-        setmax(info.rx, x + 1);
+        setmin(g_ly, y);
+        setmax(g_ry, y + 1);
+        setmin(g_lx, x);
+        setmax(g_rx, x + 1);
         repeat (i, 4) {
             int ny = y + dy[i];
             int nx = x + dx[i];
@@ -127,50 +98,30 @@ permutation_info_t analyze_permutation(vector<int> const & p, vector<char> const
             }
         }
     }
-    repeat_from (y, info.ly, info.ry) {
-        memset((void *)(g_used + y * s + info.lx), 0, (size_t)(info.rx - info.lx));
+    repeat_from (y, g_ly, g_ry) {
+        memset((void *)(g_used + y * s + g_lx), 0, (size_t)(g_rx - g_lx));
     }
-    info.score = info.sum * sqrt(info.size);
-    info.evaluated = info.score;
-    return info;
+    return sum * sqrt(size);
 }
 
 #ifdef VISUALIZE
-void visualize(vector<int> const & p) {
-    cerr << "VISUALIZE: " << p.size();
-    for (int p_i : p) cerr << ' ' << p_i;
+void visualize() {
+    cerr << "VISUALIZE: " << s;
+    repeat (i, s) cerr << ' ' << p[i];
     cerr << endl;
 }
 #endif
 
-double estimate_base_score(int s, vector<char> const & matrix) {
-    vector<int> p(s);
-    iota(whole(p), 0);
-    deque<double> scores;
-    repeat (i, 16) {
-        shuffle(whole(p), gen);
-        scores.push_back(calculate_score(p, matrix));
-    }
-    sort(whole(scores));
-    scores.pop_front();
-    scores.pop_front();
-    scores.pop_front();
-    scores.pop_back();
-    scores.pop_back();
-    scores.pop_back();
-    return accumulate(whole(scores), 0.0) / 10;
-}
-
-vector<int> ConnectedComponent::permute(vector<int> int_matrix) {
+vector<int> ConnectedComponent::permute(vector<int> a_matrix) {
     // prepare
     double clock_begin = rdtsc();
-    vector<char> matrix(whole(int_matrix));
-    int s = int(sqrt(matrix.size()));
+    sq_s = a_matrix.size();
+    s = int(sqrt(sq_s));
+    repeat (z, sq_s) matrix[z] = a_matrix[z];
     // initialize
-    vector<int> p(s);
-    iota(whole(p), 0);
+    iota(p, p + s, 0);
 #ifdef VISUALIZE
-visualize(p);
+visualize();
 #endif
 #ifdef LOCAL
 cerr << "MESSAGE: s = " << s << endl;
@@ -188,17 +139,17 @@ cerr << "MESSAGE: s = " << s << endl;
         vector<int> t(s);
         iota(whole(t), 0);
         sort(whole(t), [&](int i, int j) { return cnt[i] > cnt[j]; });
-        p.clear();
-        for (int i = 0; i < s; i += 2) p.push_back(t[i]);
-        reverse(whole(p));
-        for (int i = 1; i < s; i += 2) p.push_back(t[i]);
+        int j = 0;
+        for (int i = 0; i < s; i += 2) p[j ++] = t[i];
+        reverse(p, p + j);
+        for (int i = 1; i < s; i += 2) p[j ++] = t[i];
 #ifdef VISUALIZE
-visualize(p);
+visualize();
 #endif
     }
-    auto current = analyze_permutation(p, matrix);
-    vector<int> result = p;
-    double best_score = current.score;
+    double current_score = analyze_permutation();
+    vector<int> result(p, p + s);
+    double best_score = current_score;
     // simulated annealing
     double temp = INFINITY;
     double time = 0.0;
@@ -209,15 +160,14 @@ visualize(p);
             if (time > 0.98) {
 #ifdef LOCAL
 cerr << "MESSAGE: iteration = " << iteration << endl;
-cerr << "MESSAGE: ratio = " << best_score / estimate_base_score(s, matrix) << endl;
 cerr << "MESSAGE: time = " << time << endl;
-cerr << "MESSAGE: avg m = " << accumulate(whole(matrix), 0) /(double) (s * s) << endl;
+cerr << "MESSAGE: avg m = " << accumulate(matrix, matrix + sq_s, 0) /(double) sq_s << endl;
 int cnt[3] = {};
-repeat (z, s * s) cnt[matrix[z] > 0 ? 0 : matrix[z] == 0 ? 1 : 2] += 1;
+repeat (z, sq_s) cnt[matrix[z] > 0 ? 0 : matrix[z] == 0 ? 1 : 2] += 1;
 cerr << "MESSAGE: positive : zero : negative = "
-    << cnt[0] /(double) (s * s) << " : "
-    << cnt[1] /(double) (s * s) << " : "
-    << cnt[2] /(double) (s * s) << endl;
+    << cnt[0] /(double) sq_s << " : "
+    << cnt[1] /(double) sq_s << " : "
+    << cnt[2] /(double) sq_s << endl;
 #endif
                 break;
             }
@@ -234,35 +184,33 @@ cerr << "MESSAGE: positive : zero : negative = "
         int x = -1, y = -1;
         while (x == y) {
             x = bernoulli_distribution(0.5)(gen) ?
-                uniform_int_distribution<int>(max(0, current.ly - 3), min(s, current.ry + 3) - 1)(gen) :
-                uniform_int_distribution<int>(max(0, current.lx - 3), min(s, current.rx + 3) - 1)(gen);
+                uniform_int_distribution<int>(max(0, g_ly - 3), min(s, g_ry + 3) - 1)(gen) :
+                uniform_int_distribution<int>(max(0, g_lx - 3), min(s, g_rx + 3) - 1)(gen);
             y = uniform_int_distribution<int>(0, s - 1)(gen);
         }
         if (neightborhood_type < neightborhood_type_swap) {
             swap(p[x], p[y]);
         } else if (neightborhood_type < neightborhood_type_swap + neightborhood_type_rotate) {
             if (x < y) {
-                rotate(p.begin() + x, p.begin() + (x + 1), p.begin() + (y + 1));
+                rotate(p + x, p + (x + 1), p + (y + 1));
             } else {
-                rotate(p.begin() + y, p.begin() + x, p.begin() + (x + 1));
+                rotate(p + y, p + x, p + (x + 1));
             }
         } else {
-            reverse(p.begin() + min(x, y), p.begin() + (max(x, y) + 1));
+            reverse(p + min(x, y), p + (max(x, y) + 1));
         }
-        auto next = analyze_permutation(p, matrix);
-        double delta = next.evaluated - current.evaluated;
-        if (current.evaluated < next.evaluated + 10 or bernoulli_distribution(exp(delta / temp))(gen)) {
-            current.evaluated = next.evaluated;
-            if (best_score < next.score) {
-                best_score = next.score;
-                current = next;
-                result = p;
+        auto next_score = analyze_permutation();
+        double delta = next_score - current_score;
+        if (current_score < next_score + 10 or bernoulli_distribution(exp(delta / temp))(gen)) {
+            current_score = next_score;
+            if (best_score < next_score) {
+                best_score = next_score;
+                result.assign(p, p + s);
 #ifdef VISUALIZE
-visualize(p);
+visualize();
 #endif
 #ifdef LOCAL
 cerr << "MESSAGE: iteration = " << iteration << endl;
-cerr << "MESSAGE: evaluated = " << int(current.evaluated) << endl;
 cerr << "MESSAGE: time      = " << time << endl;
 cerr << "MESSAGE: score     = " << int(best_score) << endl;
 #endif
@@ -272,12 +220,12 @@ cerr << "MESSAGE: score     = " << int(best_score) << endl;
                 swap(p[x], p[y]);
             } else if (neightborhood_type < neightborhood_type_swap + neightborhood_type_rotate) {
                 if (x < y) {
-                    rotate(p.begin() + x, p.begin() + y, p.begin() + (y + 1));
+                    rotate(p + x, p + y, p + (y + 1));
                 } else {
-                    rotate(p.begin() + y, p.begin() + (y + 1), p.begin() + (x + 1));
+                    rotate(p + y, p + (y + 1), p + (x + 1));
                 }
             } else {
-                reverse(p.begin() + min(x, y), p.begin() + (max(x, y) + 1));
+                reverse(p + min(x, y), p + (max(x, y) + 1));
             }
         }
     }
