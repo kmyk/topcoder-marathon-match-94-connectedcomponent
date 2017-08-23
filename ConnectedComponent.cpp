@@ -32,7 +32,7 @@ double rdtsc() { // in seconds
     return ((uint64_t)hi << 32 | lo) / ticks_per_sec;
 }
 
-constexpr double eps = 1e-6;
+constexpr double eps = 1e-4;
 default_random_engine gen;
 
 class ConnectedComponent { public: vector<int> permute(vector<int> matrix); };
@@ -171,7 +171,7 @@ cerr << "MESSAGE: positive : zero : negative = "
 #endif
                 break;
             }
-            temp = (1 - time) * s;
+            temp = (1 - time) * sqrt(s) * 20;
         }
         constexpr int neightborhood_type_swap = 3;
         constexpr int neightborhood_type_rotate = 5;
@@ -201,7 +201,7 @@ cerr << "MESSAGE: positive : zero : negative = "
         }
         auto next_score = analyze_permutation();
         double delta = next_score - current_score;
-        if (current_score < next_score + 10 or bernoulli_distribution(exp(delta / temp))(gen)) {
+        if (current_score < next_score + eps or bernoulli_distribution(exp(delta / temp))(gen)) {
             current_score = next_score;
             if (best_score < next_score) {
                 best_score = next_score;
