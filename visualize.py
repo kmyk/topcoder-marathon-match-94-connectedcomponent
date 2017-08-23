@@ -21,8 +21,10 @@ def read_ps(fh):
     for line in fh:
         if line.startswith('VISUALIZE: '):
             line = line.split()
+            s = int(line[1])
             p = list(map(int, line[2 : ]))
-            assert len(p) == int(line[1])
+            assert len(p) == s
+            assert sorted(p) == list(range(s))
             ps += [ { 'p': p } ]
         elif line.startswith('MESSAGE: '):
             message = line[len('MESSAGE: ') : ]
