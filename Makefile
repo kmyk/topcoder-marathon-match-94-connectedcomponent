@@ -13,6 +13,8 @@ a.out: ${PROBLEM}.cpp
 	${CXX} ${CXXFLAGS} -g -DLOCAL $<
 a.out.visualize: ${PROBLEM}.cpp
 	${CXX} ${CXXFLAGS} -g -DLOCAL $< -o $@ -DVISUALIZE
+a.out.score: a.out
+	cp a.out a.out.score
 test/${SEED}.in:
 	./generate.py ${SEED} | sponge test/${SEED}.in
 visualize: a.out.visualize test/${SEED}.in
@@ -20,6 +22,6 @@ visualize: a.out.visualize test/${SEED}.in
 test: build
 	java -jar tester.jar -exec ./a.out -seed ${SEED} -vis
 TIMESTAMP := $(shell date +%s)
-score: a.out
-	unbuffer ./evaluate.py -j2 -s5 | tee log/${TIMESTAMP}.log
+score: a.out.score
+	unbuffer ./evaluate.py ./a.out.score -j2 -s5 | tee log/${TIMESTAMP}.log
 	./plot.py log/${TIMESTAMP}.log

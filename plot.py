@@ -22,6 +22,7 @@ if __name__ == '__main__':
         for column in acc.columns:
             if acc.loc[s, column] == max(acc.loc[s]):
                 cnt[column] += 1.0 / list(acc.loc[s]).count(acc.loc[s, column])
+                print s, column
     for column in acc.columns:
         cnt[column] /= len(acc.index)
     cnt = list(cnt.items())
