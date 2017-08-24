@@ -4,6 +4,59 @@
 -   Standings: <https://community.topcoder.com/longcontest/?module=ViewStandings&rd=16958>
 -   Submit: <https://community.topcoder.com/longcontest/?module=Submit&compid=57152&rd=16958&cd=15248>
 
+## 方針
+
+-   焼き鈍し
+-   近傍はrotate
+    -   変化量がswapの半分になる
+    -   TSPの2-optが気付くのに役立った
+-   中心からBFS
+    -   定数倍速い
+    -   見る連結成分を固定できる
+
+## Example Test
+
+```
+0) 232.826115373684
+1) 24013.777378829847
+2) 2245602.425183051
+3) 110154.60472898989
+4) 133257.79995932695
+5) 546130.5705131328
+6) 405314.4601158463
+7) 1459987.4924015617
+8) 2522748.167478078
+9) 1122665.1888408228
+```
+
+### seed = 2
+
+![2](https://raw.githubusercontent.com/kmyk/topcoder-marathon-match-connectedcomponent/master/img/seed-2.png)
+
+### seed = 3
+
+![3](https://raw.githubusercontent.com/kmyk/topcoder-marathon-match-connectedcomponent/master/img/seed-3.png)
+
+### seed = 7
+
+![7](https://raw.githubusercontent.com/kmyk/topcoder-marathon-match-connectedcomponent/master/img/seed-7.png)
+
+## 反省
+
+-   2位のATSさんの解法は端からビームサーチ
+    -   速いので盤面を使い切れるのが良いっぽい
+        -   <https://twitter.com/ats5515/status/900544276752252928>
+        -   焼き鈍しで収束しきってないのは知ってた
+    -   考えはしたが蹴った
+        -   焼き鈍しの起点を中心でなく端にしたら下がったのが理由
+-   800000より少し上は貪欲が基本ぽい
+    -   ビームサーチと同様の強さか
+    -   これも当然考えはしたが
+-   visualizer / plotter 書いたのは良かったと思う
+-   教訓
+    -   収束しきってないなら(極限値が悪そうでも)収束が速いものを試すべき
+    -   思い付いたやつは全部実装する
+
 ## 記録
 
 -   何もしない: 平均 10000 点
@@ -126,53 +179,6 @@ TLEを10秒から100秒にして試したら全体に改善することが判明
 
 終了時刻: 08.24.2017 10:00 JST
 
-## Example Test
-
-```
-0) 232.826115373684
-1) 24013.777378829847
-2) 2245602.425183051
-3) 110154.60472898989
-4) 133257.79995932695
-5) 546130.5705131328
-6) 405314.4601158463
-7) 1459987.4924015617
-8) 2522748.167478078
-9) 1122665.1888408228
-```
-
-### seed = 2
-
-![2](https://raw.githubusercontent.com/kmyk/topcoder-marathon-match-connectedcomponent/master/img/seed-2.png)
-
-### seed = 3
-
-![3](https://raw.githubusercontent.com/kmyk/topcoder-marathon-match-connectedcomponent/master/img/seed-3.png)
-
-### seed = 7
-
-![7](https://raw.githubusercontent.com/kmyk/topcoder-marathon-match-connectedcomponent/master/img/seed-7.png)
-
-## 反省
-
--   方針まとめ
-    -   焼き鈍し
-    -   近傍はrotate
-        -   変化量がswapの半分になる
-        -   TSPの2-optが気付くのに役立った
-    -   中心からBFS
-        -   定数倍速い
-        -   見る連結成分を固定できる
--   2位のATSさんの解法は端からビームサーチ
-    -   速いので盤面を使い切れるのが良いっぽい
-        -   <https://twitter.com/ats5515/status/900544276752252928>
-        -   焼き鈍しで収束しきってないのは知ってた
-    -   考えはしたが蹴った
-        -   焼き鈍しの起点を中心でなく端にしたら下がったのが理由
--   800000より少し上は貪欲が基本ぽい
-    -   ビームサーチと同様の強さか
-    -   これも当然考えはしたが
-
 ## 他の人の解法など
 
 -   atsT5515さん
@@ -180,10 +186,16 @@ TLEを10秒から100秒にして試したら全体に改善することが判明
 -   hakomoさん
     -   <https://twitter.com/hakomof/status/900542326275137536>
     -   <https://twitter.com/hakomof/status/900544409845944320>
+-   tsukammoさん
+    -   <https://twitter.com/tsukammo/status/900569184312086528>
 -   koyumeishiさん
     -   <https://twitter.com/koyumeishi_/status/900548886909014016>
 -   suikkeeさん
     -   <https://twitter.com/suikkee123/status/900549023668477952>
+-   alpha_virginisさん
+    -   <https://twitter.com/_alpha_virginis/status/900570385183236097>
 -   hamukoさん
     -   <https://docs.google.com/document/d/16CeYfTeBfWllaTt190kGvShOJbfzqo_Besi6o1Gnxl0/edit>
     -   <https://github.com/hamko/procon/blob/master/mm/mm94/game.cpp>
+-   togetter
+    -   <https://togetter.com/li/1135678>
