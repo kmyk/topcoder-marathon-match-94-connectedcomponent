@@ -4,13 +4,13 @@
 -   Standings: <https://community.topcoder.com/longcontest/?module=ViewStandings&rd=16958>
 -   Submit: <https://community.topcoder.com/longcontest/?module=Submit&compid=57152&rd=16958&cd=15248>
 
-## 方針
+## Strategy
 
--   焼き鈍し
--   近傍はrotate
+-   simulated annealing
+-   use `rotate` to make neighborhoods
     -   変化量がswapの半分になる
     -   TSPの2-optが気付くのに役立った
--   中心からBFS
+-   BFS from the center
     -   定数倍速い
     -   見る連結成分を固定できる
 
@@ -40,6 +40,12 @@
 ### seed = 7
 
 ![7](https://raw.githubusercontent.com/kmyk/topcoder-marathon-match-connectedcomponent/master/img/seed-7.png)
+
+## 比較
+
+### gorbunovさん
+
+![gorbunov](https://raw.githubusercontent.com/kmyk/topcoder-marathon-match-connectedcomponent/master/img/cmp-gorbunov.png)
 
 ## 反省
 
@@ -181,11 +187,17 @@ TLEを10秒から100秒にして試したら全体に改善することが判明
 
 ## 他の人の解法など
 
+-   gorbunovさん
+    -   <https://apps.topcoder.com/forums/?module=Thread&threadID=904911#2210524>
+    -   <https://bitbucket.org/anatoly_gorbunov/connected-component/src/8c7e50a04336ca24cbc607abf029172c2a3dd1c4/cpp/src/solution.h>
 -   atsT5515さん
     -   <https://twitter.com/ats5515/status/900534351674331137>
+    -   <http://ats5515.hatenablog.com/entry/2017/08/24/154118>
 -   hakomoさん
     -   <https://twitter.com/hakomof/status/900542326275137536>
     -   <https://twitter.com/hakomof/status/900544409845944320>
+-   mugurelionutさん
+    -   <https://apps.topcoder.com/forums/?module=Thread&threadID=904911#2210545>
 -   tsukammoさん
     -   <https://twitter.com/tsukammo/status/900569184312086528>
 -   koyumeishiさん
@@ -197,5 +209,7 @@ TLEを10秒から100秒にして試したら全体に改善することが判明
 -   hamukoさん
     -   <https://docs.google.com/document/d/16CeYfTeBfWllaTt190kGvShOJbfzqo_Besi6o1Gnxl0/edit>
     -   <https://github.com/hamko/procon/blob/master/mm/mm94/game.cpp>
+-   fmhrさん
+    -   <https://twitter.com/fmhr__/status/900631848073609216>
 -   togetter
     -   <https://togetter.com/li/1135678>
