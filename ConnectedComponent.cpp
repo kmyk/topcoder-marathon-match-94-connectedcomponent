@@ -133,6 +133,7 @@ shared_ptr<state_t> compute_next_state(shared_ptr<state_t> const & a, int p_back
         }
     }
     // get score
+    b->score = a->score;
     for (auto it : b->component) {
         setmax(b->score, it.sum * sqrt(it.size));
     }
@@ -169,7 +170,7 @@ vector<int> ConnectedComponent::permute(vector<int> a_matrix) {
         a->score = 0;
         cur.push_back(a);
     }
-    int beam_width = 2;
+    int beam_width = pow(500, 3) * 2 / pow(s, 3);
     repeat (k, s) {
         cur.swap(prv);
         cur.clear();
