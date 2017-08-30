@@ -7,6 +7,7 @@
 #include <set>
 #include <map>
 #include <stack>
+#include <memory>
 #include <queue>
 #include <tuple>
 #include <unordered_set>
@@ -35,204 +36,157 @@ double rdtsc() { // in seconds
 constexpr double eps = 1e-4;
 default_random_engine gen;
 
+struct disjoint_sets {
+    vector<int> data;
+    disjoint_sets() = default;
+    explicit disjoint_sets(size_t n) : data(n, -1) {}
+    bool is_root(int i) { return data[i] < 0; }
+    int find_root(int i) { return is_root(i) ? i : (data[i] = find_root(data[i])); }
+    int set_size(int i) { return - data[find_root(i)]; }
+    int unite_sets(int i, int j) {
+        i = find_root(i); j = find_root(j);
+        if (i != j) {
+            if (set_size(i) < set_size(j)) swap(i,j);
+            data[i] += data[j];
+            data[j] = i;
+        }
+        return i;
+    }
+    bool is_same(int i, int j) { return find_root(i) == find_root(j); }
+};
+
 class ConnectedComponent { public: vector<int> permute(vector<int> matrix); };
 constexpr int MAX_S = 500;
 
-int s, sq_s;
-int16_t p[MAX_S];
-char matrix[MAX_S * MAX_S];
-int at(int y, int x) { return matrix[p[y] * s + p[x]]; };
-bool is_on_field(int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
-
-pair<int, int> find_center() {
-    for (int delta = 0; delta < s; ++ delta) {
-        int l = s / 2 - delta;
-        int r = s / 2 + delta + 1;
-        repeat_from (y, l, r) {
-            int d = (abs(y - s / 2) == delta ? 1 : r - l - 1);
-            for (int x = l; x < r; x += d) {
-                if (at(y, x) >= 1) {
-                    return { y, x };
-                }
-            }
-        }
-    }
-    assert (false);
-}
-
-char g_used[MAX_S * MAX_S] = {};
-int16_t g_stack[2 * MAX_S * MAX_S];
-int g_stack_size = 0;
-int g_cy, g_cx;
-int g_ly, g_lx;
-int g_ry, g_rx;
-
-double analyze_permutation() {
-    tie(g_cy, g_cx) = find_center();
-    g_ly = s;
-    g_lx = s;
-    g_ry = 0;
-    g_rx = 0;
-    int size = 0;
-    int sum = 0;
-    auto push = [&](int y, int x) {
-        g_used[y * s + x] = true;
-        g_stack[g_stack_size ++] = y;
-        g_stack[g_stack_size ++] = x;
-        size += 1;
-        sum += at(y, x);
-    };
-    push(g_cy, g_cx);
-    while (g_stack_size) {
-        int x = g_stack[-- g_stack_size];
-        int y = g_stack[-- g_stack_size];
-        setmin(g_ly, y);
-        setmax(g_ry, y + 1);
-        setmin(g_lx, x);
-        setmax(g_rx, x + 1);
-        repeat (i, 4) {
-            int ny = y + dy[i];
-            int nx = x + dx[i];
-            if (is_on_field(ny, nx) and not g_used[ny * s + nx] and at(ny, nx)) {
-                push(ny, nx);
-            }
-        }
-    }
-    repeat_from (y, g_ly, g_ry) {
-        memset((void *)(g_used + y * s + g_lx), 0, (size_t)(g_rx - g_lx));
-    }
-    return sum * sqrt(size);
-}
-
 #ifdef VISUALIZE
-void visualize() {
+void visualize(vector<int> const & p) {
+    int s = p.size();
     cerr << "VISUALIZE: " << s;
     repeat (i, s) cerr << ' ' << p[i];
     cerr << endl;
 }
 #endif
 
+struct component_t {
+    int sum;
+    int size;
+};
+struct state_t {
+    vector<int16_t> p;
+    vector<bool> used;
+    vector<int> frontier;
+    vector<component_t> component;
+    double score;
+};
+
+shared_ptr<state_t> compute_next_state(shared_ptr<state_t> const & a, int p_back, int s, vector<char> const & matrix) {
+    // prepare
+    auto b = make_shared<state_t>();
+    b->p = a->p;
+    b->p.push_back(p_back);
+    int k = b->p.size();
+    b->used = a->used;
+    b->used[p_back] = true;
+    b->frontier.resize(k * 2 - 1, -1);
+    b->component = a->component;
+    auto matrix_at = [&](int y, int x) { return matrix[b->p[y] * s + b->p[x]]; };
+    // make next frontier
+    disjoint_sets ds(max(1, 4 * k - 4));
+    auto add_component = [&](int i, int y, int x) {
+        int m = matrix_at(y, x);
+        if (m) {
+            b->frontier[i] = b->component.size();
+            b->component.push_back((component_t) { m, 1 });
+        }
+        return bool(m);
+    };
+    auto unite_components = [&](int i, int j) {
+        if (i == -1) return;
+        if (j == -1) return;
+        i = ds.find_root(i);
+        j = ds.find_root(j);
+        if (i == j) return;
+        int k = ds.unite_sets(i, j);
+        if (k == j) swap(i, j);
+        assert (k == i);
+        b->component[i].sum  += b->component[j].sum;
+        b->component[i].size += b->component[j].size;
+    };
+    repeat (y, k - 1) {
+        int i = (2 * k - 2) - y;
+        if (add_component(i, y, k - 1)) {
+            if (y - 1 >= 0) unite_components(b->frontier[i], b->frontier[i + 1]);
+            int j = (2 * k - 4) - y;
+            unite_components(b->frontier[i], a->frontier[j]);
+        }
+    }
+    repeat (x, k - 1) {
+        if (add_component(x, k - 1, x)) {
+            if (x - 1 >= 0) unite_components(b->frontier[x], b->frontier[x - 1]);
+            unite_components(b->frontier[x], a->frontier[x]);
+        }
+    }
+    if (add_component(k - 1, k - 1, k - 1)) {
+        if (k >= 2) {
+            unite_components(b->frontier[k - 1], b->frontier[k - 2]);
+            unite_components(b->frontier[k - 1], b->frontier[k]);
+        }
+    }
+    // get score
+    for (auto it : b->component) {
+        setmax(b->score, it.sum * sqrt(it.size));
+    }
+    // normalize frontier
+    map<int, int> compress;
+    repeat (i, 2 * k - 1) if (b->frontier[i] != -1) {
+        if (ds.is_root(b->frontier[i])) {
+            compress.emplace(b->frontier[i], compress.size());
+        }
+    }
+    repeat (i, 2 * k - 1) if (b->frontier[i] != -1) {
+        b->frontier[i] = compress[ds.find_root(b->frontier[i])];
+    }
+    vector<component_t> component;
+    component.swap(b->component);
+    b->component.resize(compress.size());
+    for (auto it : compress) {
+        b->component[it.second] = component[it.first];
+    }
+    return b;
+}
+
 vector<int> ConnectedComponent::permute(vector<int> a_matrix) {
     // prepare
     double clock_begin = rdtsc();
-    sq_s = a_matrix.size();
-    s = int(sqrt(sq_s));
-    repeat (z, sq_s) matrix[z] = a_matrix[z];
-    // initialize
-    iota(p, p + s, 0);
-#ifdef VISUALIZE
-visualize();
-#endif
-#ifdef LOCAL
-cerr << "MESSAGE: s = " << s << endl;
-#endif
+    int sq_s = a_matrix.size();
+    int s = int(sqrt(sq_s));
+    vector<char> matrix(whole(a_matrix));
+    // solve
+    vector<shared_ptr<state_t> > cur, prv;
     {
-        vector<int> cnt(s);
-        repeat (y, s) {
-            repeat (x, s) {
-                int m = matrix[p[y] * s + p[x]];
-                int value = m > 0 ? m + 4 : m == 0 ? -4 : m;
-                cnt[p[y]] += value;
-                cnt[p[x]] += value;
-            }
-        }
-        vector<int> t(s);
-        iota(whole(t), 0);
-        sort(whole(t), [&](int i, int j) { return cnt[i] > cnt[j]; });
-        int j = 0;
-        for (int i = 0; i < s; i += 2) p[j ++] = t[i];
-        reverse(p, p + j);
-        for (int i = 1; i < s; i += 2) p[j ++] = t[i];
-#ifdef VISUALIZE
-visualize();
-#endif
+        auto a = make_shared<state_t>();
+        a->used.resize(s);
+        a->score = 0;
+        cur.push_back(a);
     }
-    double current_score = analyze_permutation();
-    vector<int> result(p, p + s);
-    double best_score = current_score;
-    // simulated annealing
-    double temp = INFINITY;
-    double time = 0.0;
-    for (int iteration = 0; ; ++ iteration) {
-        if (iteration % 10 == 0 or time > 0.95) {
-            double clock_end = rdtsc();
-            time = (clock_end - clock_begin) / 10.0;
-            if (time > 0.98) {
-#ifdef LOCAL
-cerr << "MESSAGE: iteration = " << iteration << endl;
-cerr << "MESSAGE: time = " << time << endl;
-cerr << "MESSAGE: avg m = " << accumulate(matrix, matrix + sq_s, 0) /(double) sq_s << endl;
-int cnt[3] = {};
-repeat (z, sq_s) cnt[matrix[z] > 0 ? 0 : matrix[z] == 0 ? 1 : 2] += 1;
-cerr << "MESSAGE: positive : zero : negative = "
-    << cnt[0] /(double) sq_s << " : "
-    << cnt[1] /(double) sq_s << " : "
-    << cnt[2] /(double) sq_s << endl;
-#endif
-                break;
-            }
-            temp = (1 - time) * sqrt(s) * 20;
-        }
-        constexpr int neightborhood_type_swap = 3;
-        constexpr int neightborhood_type_rotate = 5;
-        constexpr int neightborhood_type_reverse = 1;
-        int neightborhood_type = uniform_int_distribution<int>(0,
-                + neightborhood_type_swap
-                + neightborhood_type_rotate
-                + neightborhood_type_reverse
-                - 1)(gen);
-        int x = -1, y = -1;
-        while (x == y) {
-            x = bernoulli_distribution(0.5)(gen) ?
-                uniform_int_distribution<int>(max(0, g_ly - 3), min(s, g_ry + 3) - 1)(gen) :
-                uniform_int_distribution<int>(max(0, g_lx - 3), min(s, g_rx + 3) - 1)(gen);
-            y = uniform_int_distribution<int>(0, s - 1)(gen);
-        }
-        if (neightborhood_type < neightborhood_type_swap) {
-            swap(p[x], p[y]);
-        } else if (neightborhood_type < neightborhood_type_swap + neightborhood_type_rotate) {
-            if (x < y) {
-                rotate(p + x, p + (x + 1), p + (y + 1));
-            } else {
-                rotate(p + y, p + x, p + (x + 1));
-            }
-        } else {
-            reverse(p + min(x, y), p + (max(x, y) + 1));
-        }
-        auto next_score = analyze_permutation();
-        double delta = next_score - current_score;
-        if (current_score < next_score + eps or bernoulli_distribution(exp(delta / temp))(gen)) {
-            current_score = next_score;
-            if (best_score < next_score) {
-                best_score = next_score;
-                result.assign(p, p + s);
-#ifdef VISUALIZE
-visualize();
-#endif
-#ifdef LOCAL
-cerr << "MESSAGE: iteration = " << iteration << endl;
-cerr << "MESSAGE: time      = " << time << endl;
-cerr << "MESSAGE: score     = " << int(best_score) << endl;
-#endif
-            }
-        } else {
-            if (neightborhood_type < neightborhood_type_swap) {
-                swap(p[x], p[y]);
-            } else if (neightborhood_type < neightborhood_type_swap + neightborhood_type_rotate) {
-                if (x < y) {
-                    rotate(p + x, p + y, p + (y + 1));
-                } else {
-                    rotate(p + y, p + (y + 1), p + (x + 1));
-                }
-            } else {
-                reverse(p + min(x, y), p + (max(x, y) + 1));
+    int beam_width = 2;
+    repeat (k, s) {
+        cur.swap(prv);
+        cur.clear();
+        for (auto a : prv) {
+            repeat (i, s) if (not a->used[i]) {
+                cur.push_back(compute_next_state(a, i, s, matrix));
             }
         }
+        int cur_size = min<int>(cur.size(), beam_width);
+        partial_sort(cur.begin(), cur.begin() + cur_size, cur.end(), [&](shared_ptr<state_t> const & a, shared_ptr<state_t> const & b) { return a->score > b->score; });
+        cur.resize(cur_size);
+        cerr << "depth = " << k + 1 << ": score = " << cur.front()->score << "  (t = " << rdtsc() - clock_begin << ")" << endl;
     }
 #ifdef VISUALIZE
-cerr << "MESSAGE: score = " << best_score << endl;
+    visualize(vector<int>(whole(cur.front()->p)));
 #endif
-    return result;
+    return vector<int>(whole(cur.front()->p));
 }
 
 // -------8<------- end of solution submitted to the website -------8<-------
