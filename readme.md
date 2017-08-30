@@ -62,6 +62,7 @@
 -   教訓
     -   収束しきってないなら(極限値が悪そうでも)収束が速いものを試すべき
     -   思い付いたやつは全部実装する
+    -   連結性みたいなのだとビームサーチが強い
 
 ## 記録
 
@@ -196,6 +197,10 @@ TLEを10秒から100秒にして試したら全体に改善することが判明
 -   hakomoさん
     -   <https://twitter.com/hakomof/status/900542326275137536>
     -   <https://twitter.com/hakomof/status/900544409845944320>
+    -   <http://hakomof.hatenablog.com/entry/2017/08/24/195537>
+    -   引用
+        -   <https://twitter.com/chokudai/status/880238636507185152>
+        -   <https://twitter.com/chokudai/status/880239011041689600>
 -   mugurelionutさん
     -   <https://apps.topcoder.com/forums/?module=Thread&threadID=904911#2210545>
 -   tsukammoさん
@@ -206,7 +211,7 @@ TLEを10秒から100秒にして試したら全体に改善することが判明
     -   <https://twitter.com/suikkee123/status/900549023668477952>
 -   alpha_virginisさん
     -   <https://twitter.com/_alpha_virginis/status/900570385183236097>
--   hamukoさん
+-   hamkoさん
     -   <https://docs.google.com/document/d/16CeYfTeBfWllaTt190kGvShOJbfzqo_Besi6o1Gnxl0/edit>
     -   <https://github.com/hamko/procon/blob/master/mm/mm94/game.cpp>
 -   fmhrさん
